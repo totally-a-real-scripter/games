@@ -1,0 +1,11 @@
+*.ps1
+*.bat
+*.csv
+*.log
+*.zip
+*.docx
+**/*.docx
+thumbnails/_thumbnail-sources.csv
+UGS-Files/emulated/000_Templates
+.git
+_large-games

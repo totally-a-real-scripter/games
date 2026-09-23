@@ -1,0 +1,8 @@
+*.ps1
+*.bat
+*.log
+*.zip
+game-name-map.csv
+undo-game-names.csv
+thumbnails/_thumbnail-sources.csv
+_large-games/

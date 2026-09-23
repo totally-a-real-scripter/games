@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Stash — Free Online Games</title>
+  <meta name="description" content="Play 2,500+ free browser, Flash and retro games.">
+  <meta name="theme-color" content="#0f0f17">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <a class="logo" href="#/">
+      <span class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M7 7h10a5 5 0 0 1 5 5v1a4 4 0 0 1-7 2.6L14 14h-4l-1 1.6A4 4 0 0 1 2 13v-1a5 5 0 0 1 5-5z"/><circle cx="16.5" cy="10.5" r="1.1" class="dot"/><circle cx="18.5" cy="12.5" r="1.1" class="dot"/><path d="M7 9.5v4M5 11.5h4" class="cross"/></svg>
+      </span>
+      <span class="logo-text" id="brand">Game Stash</span>
+    </a>
+    <div class="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="Search 2,500+ games" autocomplete="off" spellcheck="false">
+      <div class="suggest" id="suggest" hidden></div>
+    </div>
+    <button class="icon-btn" id="randomBtn" title="Random game" aria-label="Random game">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.3" class="dot"/><circle cx="16" cy="16" r="1.3" class="dot"/><circle cx="12" cy="12" r="1.3" class="dot"/><circle cx="16" cy="8" r="1.3" class="dot"/><circle cx="8" cy="16" r="1.3" class="dot"/></svg>
+    </button>
+  </header>
+
+  <nav class="sidebar" id="sidebar"></nav>
+  <div class="scrim" id="scrim"></div>
+
+  <main id="app" class="main" tabindex="-1"></main>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# Optional: only needed if you deploy with Coolify's "Docker Compose" build pack.
+# With the "Dockerfile" build pack, Coolify only needs Ports Exposes = 3847.
+services:
+  gamestash:
+    build: .
+    expose:
+      - "3847"
+    restart: unless-stopped
