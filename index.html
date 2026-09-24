@@ -3,40 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Game Stash — Free Online Games</title>
-  <meta name="description" content="Play 2,500+ free browser, Flash and retro games.">
-  <meta name="theme-color" content="#0f0f17">
+  <title>Sigmund:re · Free Online Games</title>
+  <meta name="description" content="Play 2,500+ free browser, Flash and retro games. Sigmund, remade: a new Daily Drop every day.">
+  <meta name="theme-color" content="#0b0b0c">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
+  <script>
+    /* Apply saved settings before the page paints (keep defaults in sync with SETTINGS_DEFAULTS in app.js). */
+    (function () {
+      var o = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true };
+      try { var s = JSON.parse(localStorage.getItem('sig:settings')); if (s) for (var k in s) o[k] = s[k]; } catch (e) {}
+      var t = o.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'black') : o.theme;
+      if (!/^[a-z0-9-]+$/.test(t)) t = 'black';
+      var h = document.documentElement;
+      h.dataset.theme = t; h.dataset.accent = o.accent; h.dataset.size = o.size;
+      h.dataset.names = o.names ? 'on' : 'off'; h.dataset.motion = o.motion ? 'on' : 'off';
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'themeCss'; l.href = 'assets/themes/' + t + '.css';
+      document.head.appendChild(l);
+    })();
+  </script>
 </head>
 <body>
-  <header class="topbar">
-    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu">
-      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-    </button>
-    <a class="logo" href="#/">
-      <span class="logo-mark">
-        <svg viewBox="0 0 24 24"><path d="M7 7h10a5 5 0 0 1 5 5v1a4 4 0 0 1-7 2.6L14 14h-4l-1 1.6A4 4 0 0 1 2 13v-1a5 5 0 0 1 5-5z"/><circle cx="16.5" cy="10.5" r="1.1" class="dot"/><circle cx="18.5" cy="12.5" r="1.1" class="dot"/><path d="M7 9.5v4M5 11.5h4" class="cross"/></svg>
-      </span>
-      <span class="logo-text" id="brand">Game Stash</span>
-    </a>
-    <div class="search">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="search" type="search" placeholder="Search 2,500+ games" autocomplete="off" spellcheck="false">
-      <div class="suggest" id="suggest" hidden></div>
+  <header class="top">
+    <div class="top-inner">
+      <a class="logo" href="#/" aria-label="Home">
+        <span class="logo-box"><span id="brandA">Sigmund</span><span id="brandB">:re</span></span>
+      </a>
+      <div class="search">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" type="search" placeholder="Search 2,500+ games…" autocomplete="off" spellcheck="false">
+        <kbd>/</kbd>
+        <div class="suggest" id="suggest" hidden></div>
+      </div>
+      <button class="tbtn" id="randomBtn" title="Random game"><span id="randomIco"></span><span class="tbtn-label">Surprise me</span></button>
+      <button class="tbtn icon-only" id="settingsBtn" title="Settings" aria-label="Settings"></button>
     </div>
-    <button class="icon-btn" id="randomBtn" title="Random game" aria-label="Random game">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.3" class="dot"/><circle cx="16" cy="16" r="1.3" class="dot"/><circle cx="12" cy="12" r="1.3" class="dot"/><circle cx="16" cy="8" r="1.3" class="dot"/><circle cx="8" cy="16" r="1.3" class="dot"/></svg>
-    </button>
+    <nav class="rail" id="rail" aria-label="Browse"></nav>
   </header>
 
-  <nav class="sidebar" id="sidebar"></nav>
-  <div class="scrim" id="scrim"></div>
-
   <main id="app" class="main" tabindex="-1"></main>
+
+  <dialog class="settings" id="settings" aria-labelledby="setTitle"></dialog>
 
   <script src="assets/app.js"></script>
 </body>

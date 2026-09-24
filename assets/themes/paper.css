@@ -1,0 +1,12 @@
+/* Theme: Paper. Warm off-white paper with heavy ink outlines. */
+:root[data-theme="paper"]{
+  --paper:#f4efe6;
+  --paper-2:#ebe4d7;
+  --surface:#fffaf1;
+  --ink:#17130f;
+  --line:#17130f;
+  --shadow-c:#17130f;
+  --muted:#6f655a;
+  --dots:rgba(23,19,15,.09);
+  color-scheme:light;
+}

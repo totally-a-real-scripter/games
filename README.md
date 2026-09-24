@@ -1,4 +1,4 @@
-# Game Stash
+# Sigmund:re
 
 A static game portal for the games in `UGS-Files/`, with thumbnails from `thumbnails/`.
 There's no backend: nginx serves the files, and the page loads its catalog from `games.json`.
@@ -38,8 +38,8 @@ The rest of the library is about 0.4 GB, so the first build and push will still 
 ## Run locally
 
 ```bash
-docker build -t gamestash .
-docker run --rm -p 3847:3847 gamestash
+docker build -t sigmund-re .
+docker run --rm -p 3847:3847 sigmund-re
 # open http://localhost:3847
 ```
 
@@ -56,3 +56,13 @@ You can also serve the folder with any static server, for example `python -m htt
   (`k` is `Web`, `Flash` or `Retro`; for Retro, `pl` is the console name).
 
 Favorites and recently played are saved in each visitor's own browser.
+
+## Settings and themes
+
+Visitors open **Settings** with the gear button. Their choices are saved in their own browser (`localStorage` key `sig:settings`):
+theme, accent color, card size, game names on/off, animations on/off, auto-start games, and open games in a new tab.
+They can also clear their favorites and history there.
+
+The default theme is **Black**. Themes live in `assets/themes/`. Each theme is one CSS file plus an entry in `THEMES` in `assets/app.js`, and only the active theme's file is loaded.
+A theme can restyle the whole site, not just its colors. See `assets/themes/README.md`.
+If you change the defaults, update both `SETTINGS_DEFAULTS` in `assets/app.js` and the small script in the `<head>` of `index.html`.
