@@ -214,6 +214,11 @@
   }
   function say(text, cls) { msg.textContent = text; msg.className = 'msg ' + (cls || ''); }
 
+  // Every visit or reload starts signed out: the access code is needed each time this page loads.
+  setCookie('', 0);
+  // Coming back with the browser's Back button can show a saved copy of the page; load it fresh instead.
+  window.addEventListener('pageshow', function (e) { if (e.persisted) location.reload(); });
+
   document.getElementById('peek').onclick = function () {
     var show = pw.type === 'password';
     pw.type = show ? 'text' : 'password';
@@ -274,7 +279,13 @@
     }).then(function (res) {
       if (res.status === 204) {
         say('Signed in. Loading your portal…', 'ok');
-        location.reload();   // same address, now signed in
+        // Load the site into this page (same address). A reload brings back this sign-in page.
+        return fetch('/app', { cache: 'no-store', credentials: 'same-origin', redirect: 'manual' }).then(function (r) {
+          if (r.status !== 200) throw new Error('app ' + r.status);
+          return r.text();
+        }).then(function (html) {
+          document.open(); document.write(html); document.close();
+        });
       } else if (res.status === 429) {
         setCookie('', 0); fail('Too many attempts. Please wait a minute and try again.');
       } else {

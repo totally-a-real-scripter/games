@@ -39,12 +39,13 @@ The rest of the library is about 0.4 GB, so the first build and push will still 
 
 ## Password (sign-in page)
 
-The whole site sits behind one shared password. Visitors who aren't signed in see a sign-in page right at the site's address (`/`). Its design is a neutral "Lanternwise" learning portal kept in `login.html`. Any other address sends them back to `/`. Once they're signed in, `/` shows the normal site.
+The whole site sits behind one shared password. Visitors see a sign-in page right at the site's address (`/`). Its design is a neutral "Lanternwise" learning portal kept in `login.html`. Any other address sends them back to `/`.
 
 - **Set the password** with the `SITE_PASSWORD` environment variable. In Coolify: your resource → **Environment Variables** → add `SITE_PASSWORD`, then redeploy. Locally: `docker run --rm -p 3847:3847 -e SITE_PASSWORD='your password' sigmund-re`.
 - **Change it** by changing the variable and restarting. Everyone who was signed in has to sign in again.
 - If `SITE_PASSWORD` isn't set, the site stays locked for everyone (the container log says so).
-- **Sign out:** Settings → *Sign out*, or open `/logout`. Visitors are also signed out when they close the browser.
+- **Every visit needs the password:** `/` always shows the sign-in page, so reloading the page or opening the site again asks for the access code again. After a correct code the sign-in page loads the site (from `/app`) in place, at the same address.
+- **Sign out:** Settings → *Sign out*, or open `/logout`.
 - **Rename or restyle the sign-in page:** edit `login.html` (name, text, colors). It's a single self-contained file.
 
 How it works: the sign-in page hashes the password (SHA-256 with a fixed salt) into a `lw_session` cookie and asks `/auth-check` whether it's right. At startup `docker/40-site-password.sh` hashes `SITE_PASSWORD` the same way and writes the nginx rule that compares the two. The password itself is never stored in the repo or the image. Wrong guesses are rate-limited to about 30 requests a minute.
