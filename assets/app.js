@@ -567,7 +567,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-23-5.</p>
       </div>
     </div>`;
 }
