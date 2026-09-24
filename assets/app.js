@@ -323,7 +323,6 @@ function stageEl() {
     <div id="stage" class="stage" data-mode="off">
       <div class="stage-frame" id="stageFrame"></div>
       <div class="stage-dock" aria-label="Game controls">
-        <button class="tbtn" data-stage="home" title="Back to the games (keeps this game running)">${ic('home')}<span>Home</span></button>
         <button class="tbtn icon-only" data-stage="shrink" title="Exit full window (Esc)">${ic('shrink')}</button>
       </div>
       <div class="stage-mini">
@@ -337,8 +336,7 @@ function stageEl() {
   st.addEventListener('click', e => {
     const b = e.target.closest('[data-stage]'); if (!b) return;
     const a = b.dataset.stage;
-    if (a === 'home') { location.hash = '#/'; }
-    else if (a === 'shrink') { onPlayPage() ? setMode('docked') : setMode('mini'); }
+    if (a === 'shrink') { onPlayPage() ? setMode('docked') : setMode('mini'); }
     else if (a === 'expand') { setMode('expanded'); }
     else if (a === 'resume') { location.hash = '#/play/' + player.g.slug; }
     else if (a === 'close') { closeGame(); }
