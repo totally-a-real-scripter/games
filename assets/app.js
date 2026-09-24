@@ -42,7 +42,7 @@ const THEMES = [
   { id: 'system', name: 'Match device', note: 'Black or Paper, following your device setting.', swatch: ['#0b0b0c', '#f4efe6', '#ffc93c'] }
 ];
 const ACCENTS = [['mustard', '#ffc93c'], ['tomato', '#ff5a36'], ['teal', '#1fc7b2'], ['lilac', '#b39cff'], ['sky', '#57b7ff'], ['lime', '#b8e05a'], ['pink', '#ff8ad8']];
-const SETTINGS_DEFAULTS = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true, autostart: false, newtab: false, autoblank: false, cloak: 'off' };
+const SETTINGS_DEFAULTS = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true, autostart: false, newtab: false, autoblank: false, cloak: 'off', customCloak: null };
 
 /* ---------- tab cloak ----------
    Changes only this browser tab's title and icon. Icons come from Google's favicon service.
@@ -54,6 +54,7 @@ const CLOAKS = [
   { id: 'google', name: 'Google', title: 'Google', icon: 'https://www.google.com/favicon.ico' },
   { id: 'docs', name: 'Google Docs', title: 'Google Docs', icon: 'https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico' },
   { id: 'drive', name: 'Google Drive', title: 'My Drive - Google Drive', icon: 'https://ssl.gstatic.com/images/branding/product/2x/drive_2020q4_32dp.png' },
+  { id: 'custom', name: 'Custom', note: 'Your own name and icon.' },
   { id: 'invisible', name: 'Invisible', note: 'Blank tab name and no icon.' }
 ];
 const favUrl = d => `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(d)}`;
@@ -141,6 +142,10 @@ function applyCloak() {
   const c = CLOAKS.find(x => x.id === settings.cloak) || CLOAKS[0];
   let title = realTitle, icon = 'assets/favicon.svg';
   if (c.id === 'invisible') { title = BLANK_TITLE; icon = BLANK_ICON; }
+  else if (c.id === 'custom') {
+    const cc = customCloak();
+    if (cc) { title = cc.title || BLANK_TITLE; icon = cc.icon || BLANK_ICON; }
+  }
   else if (c.icon) { title = c.title; icon = c.icon; }
   if (document.title !== title) document.title = title;
   const old = document.querySelector('link[rel~="icon"]');
@@ -160,6 +165,14 @@ function applyCloak() {
     if (c.id !== 'off') { const l = td.createElement('link'); l.rel = 'icon'; l.href = icon; td.head.appendChild(l); }
   } catch (e) {}
 }
+
+/* Custom cloak (Settings > Tab cloak > Make your own): { title, icon }, or null when not set. */
+function customCloak() {
+  const cc = settings.customCloak;
+  return cc && (cc.title || cc.icon) ? cc : null;
+}
+// Only web or inline-image addresses are accepted as icons.
+const okIconUrl = u => /^https?:\/\/\S+$/i.test(u) || /^data:image\//i.test(u);
 
 /* ---------- about:blank ----------
    Opens the site inside a frame on an about:blank tab, so the address bar and history show about:blank.
@@ -559,8 +572,17 @@ function toast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
   setTimeout(() => t.remove(), 1800);
 }
+function cloakIcon(c) {
+  if (c.id === 'off') return '<img src="assets/favicon.svg" alt="">';
+  const icon = c.id === 'custom' ? customCloak()?.icon : c.icon;
+  return icon ? `<img src="${esc(icon)}" alt="" referrerpolicy="no-referrer">` : '';
+}
+function cloakNote(c) {
+  if (c.id === 'custom') { const cc = customCloak(); return cc ? `Tab shows “${esc(cc.title || 'nothing')}”` : 'Fill in the form below.'; }
+  return c.icon ? `Tab shows “${esc(c.title)}”` : esc(c.note);
+}
 function renderSettings() {
-  const dlg = $('#settings');
+  const dlg = $('#settings'), cc = customCloak();
   const sw = (k, label, hint) => `<div class="opt-row"><span><b>${label}</b><small>${hint}</small></span>
     <button class="switch" role="switch" aria-checked="${!!settings[k]}" data-toggle="${k}" aria-label="${label}"></button></div>`;
   dlg.innerHTML = `
@@ -573,8 +595,14 @@ function renderSettings() {
       </div>
       <div class="set-group"><span class="label">Tab cloak</span>
         <div class="cloaks">${CLOAKS.map(c => `<button class="cloak-opt" data-cloak-id="${c.id}" aria-pressed="${settings.cloak === c.id}">
-          <span class="ci">${c.id === 'off' ? '<img src="assets/favicon.svg" alt="">' : c.icon ? `<img src="${c.icon}" alt="" referrerpolicy="no-referrer">` : ''}</span>
-          <span><b>${esc(c.name)}</b><small>${c.icon ? `Tab shows “${esc(c.title)}”` : esc(c.note)}</small></span></button>`).join('')}</div>
+          <span class="ci">${cloakIcon(c)}</span>
+          <span><b>${esc(c.name)}</b><small>${cloakNote(c)}</small></span></button>`).join('')}</div>
+        <form class="custom-cloak" data-custom-form>
+          <b>Make your own</b>
+          <label><span>Tab name</span><input name="title" maxlength="80" placeholder="e.g. Home - Khan Academy" value="${esc(cc?.title || '')}" autocomplete="off" spellcheck="false"></label>
+          <label><span>Favicon URL</span><input name="icon" type="url" placeholder="https://example.com/favicon.ico" value="${esc(cc?.icon || '')}" autocomplete="off" spellcheck="false"></label>
+          <div class="cc-actions"><button class="tbtn" type="submit">Save &amp; use</button>${cc ? '<button class="tbtn" type="button" data-custom-clear>Remove</button>' : ''}</div>
+        </form>
         <p class="set-note">Changes only the name and icon of this browser tab. Saved on this device.</p>
       </div>
       <div class="set-group"><span class="label">Accent color</span>
@@ -603,7 +631,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-23-6.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-23-7.</p>
       </div>
     </div>`;
 }
@@ -616,7 +644,9 @@ function wireSettings() {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.themeId) setSetting('theme', b.dataset.themeId);
     else if (b.dataset.accentId) setSetting('accent', b.dataset.accentId);
+    else if (b.dataset.cloakId === 'custom' && !customCloak()) { $('[data-custom-form] input', dlg).focus(); return toast('Enter a tab name and favicon URL first'); }
     else if (b.dataset.cloakId) setSetting('cloak', b.dataset.cloakId);
+    else if ('customClear' in b.dataset) { settings.customCloak = null; setSetting('cloak', settings.cloak === 'custom' ? 'off' : settings.cloak); toast('Custom cloak removed'); }
     else if (b.dataset.sizeId) setSetting('size', b.dataset.sizeId);
     else if (b.dataset.toggle) setSetting(b.dataset.toggle, !settings[b.dataset.toggle]);
     else if ('blank' in b.dataset) return openInBlank();
@@ -626,6 +656,17 @@ function wireSettings() {
     else return;
     const y = $('.set-body', dlg).scrollTop; renderSettings(); $('.set-body', dlg).scrollTop = y;
     if (b.dataset.clear) route();
+  });
+  dlg.addEventListener('submit', e => {
+    const f = e.target.closest('[data-custom-form]'); if (!f) return;
+    e.preventDefault();
+    const title = f.elements.title.value.trim(), icon = f.elements.icon.value.trim();
+    if (!title && !icon) return toast('Enter a tab name or a favicon URL');
+    if (icon && !okIconUrl(icon)) { f.elements.icon.focus(); return toast('The favicon URL should start with https://'); }
+    settings.customCloak = { title, icon };
+    setSetting('cloak', 'custom');
+    toast('Custom cloak on');
+    const y = $('.set-body', dlg).scrollTop; renderSettings(); $('.set-body', dlg).scrollTop = y;
   });
   dlg.addEventListener('close', () => { if (/^#?\/?$/.test(location.hash) || /#\/(recent|favorites)/.test(location.hash)) route(); });
 }
