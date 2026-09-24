@@ -3,159 +3,231 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign in · Sigmund:re</title>
+  <title>Lanternwise · Sign in</title>
+  <meta name="description" content="Lanternwise learning portal. Sign in to continue.">
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#0b0b0c">
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#f6f2e9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#11151b" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23285e45'/%3E%3Cpath d='M16 6v2M11 10h10l-1.5 3h-7zM12.5 13h7v9a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2z' stroke='%23fbf8f1' stroke-width='1.8' fill='none' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='18' r='2.2' fill='%23f0b541'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <script>
-    /* Use the visitor's saved theme + accent from the main site (localStorage key sig:settings). */
-    (function () {
-      var o = { theme: 'black', accent: 'mustard' };
-      try { var s = JSON.parse(localStorage.getItem('sig:settings')); if (s) for (var k in s) o[k] = s[k]; } catch (e) {}
-      var t = o.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'black') : o.theme;
-      if (t !== 'paper') t = 'black';
-      document.documentElement.dataset.theme = t;
-      document.documentElement.dataset.accent = /^[a-z]+$/.test(o.accent) ? o.accent : 'mustard';
-    })();
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root{
-      --paper:#0b0b0c;--surface:#18181b;--ink:#f2f0ea;--line:#34343a;--shadow-c:#000;--muted:#9a9aa3;--dots:rgba(255,255,255,.06);
-      --tomato:#ff5a36;--accent:#ffc93c;--bw:2px;
-      --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-      --sans:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-      color-scheme:dark;
+      --bg:#f6f2e9;--surface:#fffdf8;--ink:#1c2733;--muted:#5d6874;--line:#e2dccd;--line-strong:#cfc7b4;
+      --accent:#285e45;--accent-ink:#fbf8f1;--accent-soft:#e3eee6;--amber:#c98a1b;--amber-soft:#f8ecd2;--err:#b3412e;
+      --ruled:rgba(40,94,69,.07);
+      --serif:"Fraunces",Georgia,"Times New Roman",serif;
+      --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+      --r:14px;
+      color-scheme:light;
     }
-    :root[data-theme="paper"]{--paper:#f4efe6;--surface:#fffaf1;--ink:#17130f;--line:#17130f;--shadow-c:#17130f;--muted:#6f655a;--dots:rgba(23,19,15,.09);color-scheme:light}
-    :root[data-accent="tomato"]{--accent:#ff5a36}
-    :root[data-accent="teal"]{--accent:#1fc7b2}
-    :root[data-accent="lilac"]{--accent:#b39cff}
-    :root[data-accent="sky"]{--accent:#57b7ff}
-    :root[data-accent="lime"]{--accent:#b8e05a}
-    :root[data-accent="pink"]{--accent:#ff8ad8}
-
+    @media (prefers-color-scheme:dark){
+      :root{--bg:#11151b;--surface:#181e26;--ink:#e9e5dc;--muted:#9aa3ad;--line:#29313c;--line-strong:#37414d;
+        --accent:#7cc39c;--accent-ink:#0f1a14;--accent-soft:#1c2b24;--amber:#e6b04e;--amber-soft:#2a241a;--err:#f08a74;
+        --ruled:rgba(124,195,156,.05);color-scheme:dark}
+    }
     *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-weight:500;-webkit-font-smoothing:antialiased}
-    body{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px;
-      background-image:radial-gradient(var(--dots) 1px,transparent 1.2px);background-size:22px 22px}
-    ::selection{background:var(--accent);color:#17130f}
-    :focus-visible{outline:3px solid var(--tomato);outline-offset:2px}
+    html,body{margin:0}
+    body{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+      background-image:linear-gradient(var(--ruled) 1px,transparent 1px);background-size:100% 32px}
+    :focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:6px}
+    ::selection{background:var(--amber-soft)}
 
-    .wrap{width:100%;max-width:420px}
-    .logo{display:flex;justify-content:center;margin-bottom:26px}
-    .logo-box{display:inline-flex;align-items:baseline;line-height:1;font-weight:700;letter-spacing:-.8px;font-size:30px;padding:10px 16px 11px;
-      border:var(--bw) solid var(--line);border-radius:11px;background:var(--accent);color:#17130f;box-shadow:4px 4px 0 var(--shadow-c);transform:rotate(-3deg)}
-    .logo-box span{color:var(--tomato);-webkit-text-stroke:.7px #17130f}
+    /* header */
+    .top{border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px)}
+    .top-inner{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:12px}
+    .brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:600;font-size:21px;letter-spacing:-.2px}
+    .brand-mark{width:34px;height:34px;border-radius:9px;background:#285e45;display:grid;place-items:center;flex:none}
+    .brand-mark svg{width:22px;height:22px}
+    .brand small{display:block;font-family:var(--sans);font-weight:500;font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;color:var(--muted);margin-top:-2px}
+    .top-note{margin-left:auto;font-size:14px;color:var(--muted)}
 
-    .card{position:relative;background:var(--surface);border:var(--bw) solid var(--line);border-radius:18px;box-shadow:6px 6px 0 var(--shadow-c);padding:26px 24px 24px}
-    .sticker{position:absolute;top:-13px;right:18px;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;
-      padding:4px 8px;border:1.5px solid #17130f;border-radius:6px;background:var(--tomato);color:#17130f;transform:rotate(4deg)}
-    h1{margin:0 0 6px;font-size:26px;letter-spacing:-.6px;line-height:1.1}
-    p.sub{margin:0 0 22px;color:var(--muted);font-size:15px;line-height:1.45}
+    /* layout */
+    main{flex:1;width:100%;max-width:1080px;margin:0 auto;padding:56px 20px 40px;display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:5px 11px;border-radius:999px}
+    h1{font-family:var(--serif);font-weight:600;font-size:clamp(34px,4.6vw,50px);line-height:1.08;letter-spacing:-.8px;margin:18px 0 14px}
+    h1 em{font-style:italic;color:var(--accent)}
+    .lede{font-size:18px;color:var(--muted);max-width:30em;margin:0 0 28px}
+    .subjects{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 30px;padding:0;list-style:none}
+    .subjects li{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:500;padding:6px 12px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface)}
+    .subjects i{width:8px;height:8px;border-radius:50%;background:var(--c)}
 
-    label{display:block;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .wotd{position:relative;max-width:30em;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px}
+    .wotd .label{font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--amber)}
+    .wotd .word{font-family:var(--serif);font-size:24px;font-weight:600;margin:4px 0 0}
+    .wotd .pos{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--muted);margin-left:8px;font-weight:500}
+    .wotd p{margin:4px 0 0;color:var(--muted);font-size:15px}
+
+    /* card */
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:32px 30px 28px;box-shadow:0 1px 0 var(--line),0 18px 40px -22px rgba(28,39,51,.28)}
+    .card h2{font-family:var(--serif);font-weight:600;font-size:28px;letter-spacing:-.4px;margin:0 0 4px}
+    .card .sub{margin:0 0 24px;color:var(--muted);font-size:15px}
+    label.fl{display:block;font-size:14px;font-weight:600;margin-bottom:7px}
     .field{position:relative;display:flex;align-items:center}
-    .field svg{position:absolute;left:14px;width:20px;height:20px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;z-index:1}
-    input{width:100%;height:50px;border:var(--bw) solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);
-      padding:0 52px 0 44px;font:inherit;font-size:16px;outline:none;box-shadow:3px 3px 0 var(--shadow-c);transition:box-shadow .12s,transform .12s}
-    input::placeholder{color:var(--muted)}
-    input:focus{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--accent)}
-    .peek{position:absolute;right:8px;height:36px;width:36px;border-radius:999px;border:0;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center}
-    .peek:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
-    .peek svg{position:static;stroke:currentColor}
+    .field>svg{position:absolute;left:14px;width:19px;height:19px;z-index:1}
+    svg.i{fill:none;stroke:var(--muted);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+    .field input{width:100%;height:50px;border:1px solid var(--line-strong);border-radius:11px;background:var(--bg);color:var(--ink);
+      padding:0 50px 0 44px;font:inherit;font-size:16px;outline:none;transition:border-color .15s,box-shadow .15s}
+    .field input::placeholder{color:var(--muted);opacity:.8}
+    .field input:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+    .field.bad input{border-color:var(--err);box-shadow:0 0 0 4px color-mix(in srgb,var(--err) 15%,transparent)}
+    .peek{position:absolute;right:7px;width:38px;height:38px;border:0;border-radius:8px;background:none;cursor:pointer;display:grid;place-items:center}
+    .peek:hover{background:var(--accent-soft)}
+    .peek svg{width:19px;height:19px}
 
-    .remember{display:flex;align-items:center;gap:9px;margin:16px 0 20px;font-size:14.5px;color:var(--muted);cursor:pointer;user-select:none;text-transform:none;letter-spacing:0;font-family:var(--sans);font-weight:500}
-    .remember input{appearance:none;width:20px;height:20px;padding:0;border-radius:6px;box-shadow:none;background:var(--paper);display:grid;place-items:center;cursor:pointer;flex:none}
-    .remember input:checked{background:var(--accent)}
-    .remember input:checked::after{content:"";width:9px;height:5px;border:2.5px solid #17130f;border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
-    .remember input:focus{transform:none;box-shadow:none}
+    .remember{display:flex;align-items:center;gap:10px;margin:16px 0 22px;font-size:14.5px;color:var(--muted);cursor:pointer;user-select:none}
+    .remember input{appearance:none;width:19px;height:19px;margin:0;border:1.5px solid var(--line-strong);border-radius:5px;background:var(--bg);display:grid;place-items:center;cursor:pointer;flex:none}
+    .remember input:checked{background:var(--accent);border-color:var(--accent)}
+    .remember input:checked::after{content:"";width:9px;height:5px;border:2px solid var(--accent-ink);border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
 
-    button.go{width:100%;height:52px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:var(--bw) solid #17130f;border-radius:999px;
-      background:var(--accent);color:#17130f;font:inherit;font-weight:700;font-size:17px;cursor:pointer;box-shadow:3px 3px 0 var(--shadow-c);transition:transform .1s,box-shadow .1s}
-    button.go:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--shadow-c)}
-    button.go:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow-c)}
-    button.go[disabled]{opacity:.7;cursor:progress}
-    button.go svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+    .go{width:100%;height:50px;border:0;border-radius:11px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;font-size:16px;cursor:pointer;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:filter .15s,transform .05s}
+    .go:hover{filter:brightness(1.08)}
+    .go:active{transform:translateY(1px)}
+    .go[disabled]{opacity:.75;cursor:progress}
+    .go svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-    .msg{min-height:22px;margin-top:14px;font-size:14.5px;font-weight:600;text-align:center}
-    .msg.err{color:var(--tomato)}
+    .msg{min-height:22px;margin-top:14px;font-size:14.5px;font-weight:500;text-align:center;color:var(--muted)}
+    .msg.err{color:var(--err)}
     .msg.ok{color:var(--accent)}
+    .help{margin:22px 0 0;padding-top:18px;border-top:1px solid var(--line);font-size:14px;color:var(--muted);display:flex;gap:10px;align-items:flex-start}
+    .help svg{width:18px;height:18px;margin-top:2px;flex:none}
     .shake{animation:shake .38s}
-    @keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}}
+    @keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
     @media (prefers-reduced-motion:reduce){.shake{animation:none}*{transition:none!important}}
 
-    .foot{margin-top:22px;text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.3px}
-    @media (max-width:420px){.card{padding:24px 18px 20px}h1{font-size:23px}.logo-box{font-size:26px}}
+    footer{border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+    footer div{max-width:1080px;margin:0 auto;padding:16px 20px;display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:space-between}
+
+    @media (max-width:860px){
+      main{grid-template-columns:1fr;gap:32px;padding:32px 16px 32px;max-width:520px}
+      .top-inner{padding:12px 16px}
+      .top-note{display:none}
+      .lede{font-size:16.5px;margin-bottom:20px}
+      .subjects{margin-bottom:0}
+      .wotd{display:none}
+      .card{padding:26px 20px 22px}
+      footer div{padding:14px 16px}
+    }
   </style>
 </head>
 <body>
-  <main class="wrap">
-    <div class="logo"><span class="logo-box">Sigmund<span>:re</span></span></div>
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fbf8f1" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5v2M7 6.5h10l-1.6 3H8.6z"/><path d="M8.5 9.5h7v9.5a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2z"/><circle cx="12" cy="15" r="2" fill="#f0b541" stroke="none"/></svg>
+        </span>
+        <span>Lanternwise<small>Learning portal</small></span>
+      </div>
+      <span class="top-note">Study smarter, one lesson at a time</span>
+    </div>
+  </header>
+
+  <main>
+    <section aria-labelledby="welcome">
+      <span class="eyebrow">Student portal</span>
+      <h1 id="welcome">Welcome back.<br>Let’s keep <em>learning</em>.</h1>
+      <p class="lede">Sign in to pick up where you left off: your lessons, practice sets and study notes are waiting.</p>
+      <ul class="subjects" aria-label="Subjects">
+        <li><i style="--c:#3f7fbf"></i>Mathematics</li>
+        <li><i style="--c:#3f9b6b"></i>Science</li>
+        <li><i style="--c:#c98a1b"></i>History</li>
+        <li><i style="--c:#b3563e"></i>Language Arts</li>
+        <li><i style="--c:#7a62b8"></i>Geography</li>
+      </ul>
+      <div class="wotd" id="wotd" aria-live="off">
+        <div class="label">Word of the day</div>
+        <div class="word"><span id="wWord">diligent</span><span class="pos" id="wPos">adjective</span></div>
+        <p id="wDef">Showing care and steady effort in one’s work.</p>
+      </div>
+    </section>
 
     <form class="card" id="form" autocomplete="on" novalidate>
-      <span class="sticker">Members only</span>
-      <h1>Enter the password</h1>
-      <p class="sub">This game library is private. Enter the password to start playing.</p>
+      <h2>Sign in</h2>
+      <p class="sub">Enter your access code to continue.</p>
 
-      <input type="text" name="username" value="sigmund" autocomplete="username" hidden aria-hidden="true" tabindex="-1">
-      <label for="pw">Password</label>
-      <div class="field">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
-        <input id="pw" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required autofocus>
-        <button type="button" class="peek" id="peek" aria-label="Show password" title="Show password">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      <input type="text" name="username" value="student" autocomplete="username" hidden aria-hidden="true" tabindex="-1">
+      <label class="fl" for="pw">Access code</label>
+      <div class="field" id="field">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+        <input id="pw" name="password" type="password" placeholder="Your access code" autocomplete="current-password" required autofocus>
+        <button type="button" class="peek" id="peek" aria-label="Show access code" title="Show access code">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
 
-      <label class="remember"><input type="checkbox" id="remember" checked> Keep me signed in for 30 days</label>
+      <label class="remember"><input type="checkbox" id="remember" checked> Keep me signed in on this device</label>
 
-      <button class="go" id="go" type="submit">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
-        Let me in
+      <button class="go" id="go" type="submit">Continue
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
       <div class="msg" id="msg" role="status" aria-live="polite"></div>
-    </form>
 
-    <div class="foot">2,500+ free games · behind one password</div>
+      <p class="help">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6M12 17h.01"/></svg>
+        <span>Don’t have an access code? Ask the person who shared this portal with you.</span>
+      </p>
+    </form>
   </main>
+
+  <footer><div><span>© <span id="yr">2026</span> Lanternwise Learning</span><span>Curiosity is the best teacher.</span></div></footer>
 
 <script>
 (function () {
   'use strict';
-  var COOKIE = 'sig_auth';
-  var SALT = 'sigmund:re|';            // must match docker/40-site-password.sh
-  var form = document.getElementById('form'), pw = document.getElementById('pw');
+  var COOKIE = 'lw_session';
+  var SALT = 'lanternwise|';            // must match docker/40-site-password.sh
+  var form = document.getElementById('form'), pw = document.getElementById('pw'), field = document.getElementById('field');
   var msg = document.getElementById('msg'), go = document.getElementById('go');
   var secure = location.protocol === 'https:' ? '; Secure' : '';
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  /* Word of the day: same word for everyone on a given date. */
+  var WORDS = [
+    ['diligent', 'adjective', 'Showing care and steady effort in one’s work.'],
+    ['ubiquitous', 'adjective', 'Present, appearing or found everywhere.'],
+    ['meticulous', 'adjective', 'Showing great attention to detail; very careful and precise.'],
+    ['resilient', 'adjective', 'Able to recover quickly from difficulties.'],
+    ['serendipity', 'noun', 'Finding something good without looking for it.'],
+    ['eloquent', 'adjective', 'Fluent and persuasive in speaking or writing.'],
+    ['pragmatic', 'adjective', 'Dealing with things sensibly and realistically.'],
+    ['tenacious', 'adjective', 'Holding firmly to a goal; not giving up easily.'],
+    ['lucid', 'adjective', 'Expressed clearly; easy to understand.'],
+    ['perennial', 'adjective', 'Lasting or existing for a long time; recurring.'],
+    ['ephemeral', 'adjective', 'Lasting for a very short time.'],
+    ['inquisitive', 'adjective', 'Curious and eager to learn about things.'],
+    ['synthesis', 'noun', 'Combining separate ideas into a connected whole.'],
+    ['hypothesis', 'noun', 'A proposed explanation that can be tested.'],
+    ['empathy', 'noun', 'The ability to understand and share the feelings of another.'],
+    ['catalyst', 'noun', 'Something that causes or speeds up change.'],
+    ['nuance', 'noun', 'A subtle difference in meaning, expression or sound.'],
+    ['perseverance', 'noun', 'Continued effort to do something despite difficulty.']
+  ];
+  var d = new Date(), day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5);
+  var w = WORDS[(day + d.getFullYear()) % WORDS.length];
+  document.getElementById('wWord').textContent = w[0];
+  document.getElementById('wPos').textContent = w[1];
+  document.getElementById('wDef').textContent = w[2];
 
   function setCookie(v, maxAge) {
     document.cookie = COOKIE + '=' + v + '; Path=/; SameSite=Lax' + secure + (maxAge != null ? '; Max-Age=' + maxAge : '');
   }
   function say(text, cls) { msg.textContent = text; msg.className = 'msg ' + (cls || ''); }
 
-  // Signing out: /login.html?logout clears the cookie.
-  if (/[?&]logout\b/.test(location.search)) {
-    setCookie('', 0);
-    history.replaceState(null, '', location.pathname);
-    say('You’ve been signed out.', 'ok');
-  }
-
   document.getElementById('peek').onclick = function () {
     var show = pw.type === 'password';
     pw.type = show ? 'text' : 'password';
-    this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    this.setAttribute('aria-label', show ? 'Hide access code' : 'Show access code');
     pw.focus();
   };
+  pw.addEventListener('input', function () { field.classList.remove('bad'); });
 
-  /* SHA-256 → hex. Uses WebCrypto when available (HTTPS/localhost), otherwise a small JS fallback (plain HTTP on a LAN). */
+  /* SHA-256 → hex. WebCrypto when available (HTTPS/localhost), otherwise a small JS fallback (plain HTTP). */
   function sha256(str) {
     var bytes = new TextEncoder().encode(str);
-    if (window.crypto && crypto.subtle) {
-      return crypto.subtle.digest('SHA-256', bytes).then(hex);
-    }
+    if (window.crypto && crypto.subtle) return crypto.subtle.digest('SHA-256', bytes).then(hex);
     return Promise.resolve(hex(sha256js(bytes)));
   }
   function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
@@ -172,13 +244,13 @@
         var s0 = r(w[i-15], 7) ^ r(w[i-15], 18) ^ (w[i-15] >>> 3), s1 = r(w[i-2], 17) ^ r(w[i-2], 19) ^ (w[i-2] >>> 10);
         w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
       }
-      var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      var a = H[0], b = H[1], c = H[2], dd = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
       for (i = 0; i < 64; i++) {
         var t1 = (h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
         var t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
-        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+        h = g; g = f; f = e; e = (dd + t1) | 0; dd = c; c = b; b = a; a = (t1 + t2) | 0;
       }
-      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + dd) | 0;
       H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
     }
     var out = new Uint8Array(32);
@@ -187,7 +259,7 @@
   }
 
   function fail(text) {
-    say(text, 'err');
+    say(text, 'err'); field.classList.add('bad');
     form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
     go.disabled = false; pw.select();
   }
@@ -195,24 +267,23 @@
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var value = pw.value;
-    if (!value) return fail('Type the password first.');
+    if (!value) return fail('Please enter your access code.');
     go.disabled = true; say('Checking…');
     sha256(SALT + value).then(function (token) {
       setCookie(token, document.getElementById('remember').checked ? 60 * 60 * 24 * 30 : null);
-      // The server decides: /auth-check answers 204 only when the cookie matches the site password.
+      // The server decides: /auth-check answers 204 only when the cookie matches.
       return fetch('/auth-check', { cache: 'no-store', credentials: 'same-origin' });
     }).then(function (res) {
       if (res.status === 204) {
-        say('You’re in. Loading games…', 'ok');
-        // Keep the page they were heading to (e.g. #/play/some-game survives the redirect here).
-        location.replace('/' + (/^#\/[^\s]*$/.test(location.hash) ? location.hash : ''));
+        say('Signed in. Loading your portal…', 'ok');
+        location.reload();   // same address, now signed in
       } else if (res.status === 429) {
-        setCookie('', 0); fail('Too many tries. Wait a minute and try again.');
+        setCookie('', 0); fail('Too many attempts. Please wait a minute and try again.');
       } else {
-        setCookie('', 0); fail('That’s not the password.');
+        setCookie('', 0); fail('That access code isn’t right. Please try again.');
       }
     }).catch(function () {
-      setCookie('', 0); fail('Couldn’t reach the server. Try again.');
+      setCookie('', 0); fail('Couldn’t reach the server. Please try again.');
     });
   });
 })();

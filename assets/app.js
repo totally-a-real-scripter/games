@@ -517,7 +517,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="recent">${ic('clock')}Clear recently played</button>
           <button class="tbtn" data-clear="favs">${ic('heart')}Clear favorites</button>
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
-          <a class="tbtn" href="/login.html?logout">${ic('lock')}Sign out</a>
+          <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
         <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server.</p>
       </div>

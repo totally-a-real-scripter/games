@@ -39,14 +39,15 @@ The rest of the library is about 0.4 GB, so the first build and push will still 
 
 ## Password (sign-in page)
 
-The whole site sits behind one shared password. Visitors land on `login.html`, and nginx refuses every page, game, thumbnail and `games.json` until they sign in.
+The whole site sits behind one shared password. Visitors who aren't signed in see a sign-in page right at the site's address (`/`). Its design is a neutral "Lanternwise" learning portal kept in `login.html`. Any other address sends them back to `/`. Once they're signed in, `/` shows the normal site.
 
 - **Set the password** with the `SITE_PASSWORD` environment variable. In Coolify: your resource → **Environment Variables** → add `SITE_PASSWORD`, then redeploy. Locally: `docker run --rm -p 3847:3847 -e SITE_PASSWORD='your password' sigmund-re`.
 - **Change it** by changing the variable and restarting. Everyone who was signed in has to sign in again.
 - If `SITE_PASSWORD` isn't set, the site stays locked for everyone (the container log says so).
-- **Sign out:** Settings → *Sign out*, or open `/login.html?logout`. "Keep me signed in" lasts 30 days; unticked, it lasts until the browser closes.
+- **Sign out:** Settings → *Sign out*, or open `/logout`. "Keep me signed in" lasts 30 days; unticked, it lasts until the browser closes.
+- **Rename or restyle the sign-in page:** edit `login.html` (name, text, colors). It's a single self-contained file.
 
-How it works: `login.html` hashes the password (SHA-256 with a fixed salt) into a `sig_auth` cookie and asks `/auth-check` whether it's right. At startup `docker/40-site-password.sh` hashes `SITE_PASSWORD` the same way and writes the nginx rule that compares the two. The password itself is never stored in the repo or the image. Wrong guesses are rate-limited to about 30 requests a minute.
+How it works: the sign-in page hashes the password (SHA-256 with a fixed salt) into a `lw_session` cookie and asks `/auth-check` whether it's right. At startup `docker/40-site-password.sh` hashes `SITE_PASSWORD` the same way and writes the nginx rule that compares the two. The password itself is never stored in the repo or the image. Wrong guesses are rate-limited to about 30 requests a minute.
 This is a simple shared password, not user accounts: use something longer than a single word, and serve the site over HTTPS (Coolify does this for you) so the cookie can't be read in transit.
 
 ## Run locally
