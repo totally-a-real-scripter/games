@@ -138,7 +138,7 @@ let GAMES = [], BY_SLUG = new Map();
 const BRAND = CONFIG.brand.join('');
 let realTitle = `${BRAND} · Free Online Games`;
 function setTitle(t) { realTitle = t; applyCloak(); }
-function applyCloak() {
+function applyCloak(force) {
   const c = CLOAKS.find(x => x.id === settings.cloak) || CLOAKS[0];
   let title = realTitle, icon = 'assets/favicon.svg';
   if (c.id === 'invisible') { title = BLANK_TITLE; icon = BLANK_ICON; }
@@ -148,8 +148,9 @@ function applyCloak() {
   }
   else if (c.icon) { title = c.title; icon = c.icon; }
   if (document.title !== title) document.title = title;
-  const old = document.querySelector('link[rel~="icon"]');
-  if (!old || old.getAttribute('href') !== icon) {
+  const links = document.querySelectorAll('link[rel~="icon"]'), old = links[0];
+  if (force || links.length > 1 || !old || old.getAttribute('href') !== icon) {
+    links.forEach((l, i) => { if (i) l.remove(); });
     // Swap in a fresh <link>: some browsers ignore an href change on the existing one.
     const l = document.createElement('link'); l.rel = 'icon'; l.href = icon;
     if (icon.endsWith('.svg')) l.type = 'image/svg+xml';
@@ -631,7 +632,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-23-7.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-23-8.</p>
       </div>
     </div>`;
 }
@@ -676,6 +677,9 @@ async function boot() {
   $('#brandA').textContent = CONFIG.brand[0]; $('#brandB').textContent = CONFIG.brand[1];
   $('#randomIco').outerHTML = ic('shuffle');
   applySettings();
+  // After signing in, the sign-in page swaps this page in without a real page load, and Chrome keeps
+  // showing the sign-in icon until the icon <link> is replaced again. Do that once things settle.
+  setTimeout(() => applyCloak(true), 60); setTimeout(() => applyCloak(true), 800);
   wireSettings();
   app.innerHTML = '<div class="empty"><b>Loading games…</b></div>';
   try {
