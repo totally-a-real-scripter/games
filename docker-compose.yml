@@ -1,8 +1,10 @@
 # Optional: only needed if you deploy with Coolify's "Docker Compose" build pack.
-# With the "Dockerfile" build pack, Coolify only needs Ports Exposes = 3847.
+# With the "Dockerfile" build pack, Coolify only needs Ports Exposes = 3847 and a SITE_PASSWORD variable.
 services:
   gamestash:
     build: .
     expose:
       - "3847"
+    environment:
+      - SITE_PASSWORD=${SITE_PASSWORD}
     restart: unless-stopped

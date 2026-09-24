@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Sigmund:re</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0b0b0c">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script>
+    /* Use the visitor's saved theme + accent from the main site (localStorage key sig:settings). */
+    (function () {
+      var o = { theme: 'black', accent: 'mustard' };
+      try { var s = JSON.parse(localStorage.getItem('sig:settings')); if (s) for (var k in s) o[k] = s[k]; } catch (e) {}
+      var t = o.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'black') : o.theme;
+      if (t !== 'paper') t = 'black';
+      document.documentElement.dataset.theme = t;
+      document.documentElement.dataset.accent = /^[a-z]+$/.test(o.accent) ? o.accent : 'mustard';
+    })();
+  </script>
+  <style>
+    :root{
+      --paper:#0b0b0c;--surface:#18181b;--ink:#f2f0ea;--line:#34343a;--shadow-c:#000;--muted:#9a9aa3;--dots:rgba(255,255,255,.06);
+      --tomato:#ff5a36;--accent:#ffc93c;--bw:2px;
+      --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      --sans:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+      color-scheme:dark;
+    }
+    :root[data-theme="paper"]{--paper:#f4efe6;--surface:#fffaf1;--ink:#17130f;--line:#17130f;--shadow-c:#17130f;--muted:#6f655a;--dots:rgba(23,19,15,.09);color-scheme:light}
+    :root[data-accent="tomato"]{--accent:#ff5a36}
+    :root[data-accent="teal"]{--accent:#1fc7b2}
+    :root[data-accent="lilac"]{--accent:#b39cff}
+    :root[data-accent="sky"]{--accent:#57b7ff}
+    :root[data-accent="lime"]{--accent:#b8e05a}
+    :root[data-accent="pink"]{--accent:#ff8ad8}
+
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-weight:500;-webkit-font-smoothing:antialiased}
+    body{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px;
+      background-image:radial-gradient(var(--dots) 1px,transparent 1.2px);background-size:22px 22px}
+    ::selection{background:var(--accent);color:#17130f}
+    :focus-visible{outline:3px solid var(--tomato);outline-offset:2px}
+
+    .wrap{width:100%;max-width:420px}
+    .logo{display:flex;justify-content:center;margin-bottom:26px}
+    .logo-box{display:inline-flex;align-items:baseline;line-height:1;font-weight:700;letter-spacing:-.8px;font-size:30px;padding:10px 16px 11px;
+      border:var(--bw) solid var(--line);border-radius:11px;background:var(--accent);color:#17130f;box-shadow:4px 4px 0 var(--shadow-c);transform:rotate(-3deg)}
+    .logo-box span{color:var(--tomato);-webkit-text-stroke:.7px #17130f}
+
+    .card{position:relative;background:var(--surface);border:var(--bw) solid var(--line);border-radius:18px;box-shadow:6px 6px 0 var(--shadow-c);padding:26px 24px 24px}
+    .sticker{position:absolute;top:-13px;right:18px;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;
+      padding:4px 8px;border:1.5px solid #17130f;border-radius:6px;background:var(--tomato);color:#17130f;transform:rotate(4deg)}
+    h1{margin:0 0 6px;font-size:26px;letter-spacing:-.6px;line-height:1.1}
+    p.sub{margin:0 0 22px;color:var(--muted);font-size:15px;line-height:1.45}
+
+    label{display:block;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .field{position:relative;display:flex;align-items:center}
+    .field svg{position:absolute;left:14px;width:20px;height:20px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;z-index:1}
+    input{width:100%;height:50px;border:var(--bw) solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);
+      padding:0 52px 0 44px;font:inherit;font-size:16px;outline:none;box-shadow:3px 3px 0 var(--shadow-c);transition:box-shadow .12s,transform .12s}
+    input::placeholder{color:var(--muted)}
+    input:focus{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--accent)}
+    .peek{position:absolute;right:8px;height:36px;width:36px;border-radius:999px;border:0;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center}
+    .peek:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
+    .peek svg{position:static;stroke:currentColor}
+
+    .remember{display:flex;align-items:center;gap:9px;margin:16px 0 20px;font-size:14.5px;color:var(--muted);cursor:pointer;user-select:none;text-transform:none;letter-spacing:0;font-family:var(--sans);font-weight:500}
+    .remember input{appearance:none;width:20px;height:20px;padding:0;border-radius:6px;box-shadow:none;background:var(--paper);display:grid;place-items:center;cursor:pointer;flex:none}
+    .remember input:checked{background:var(--accent)}
+    .remember input:checked::after{content:"";width:9px;height:5px;border:2.5px solid #17130f;border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
+    .remember input:focus{transform:none;box-shadow:none}
+
+    button.go{width:100%;height:52px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:var(--bw) solid #17130f;border-radius:999px;
+      background:var(--accent);color:#17130f;font:inherit;font-weight:700;font-size:17px;cursor:pointer;box-shadow:3px 3px 0 var(--shadow-c);transition:transform .1s,box-shadow .1s}
+    button.go:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--shadow-c)}
+    button.go:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow-c)}
+    button.go[disabled]{opacity:.7;cursor:progress}
+    button.go svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+    .msg{min-height:22px;margin-top:14px;font-size:14.5px;font-weight:600;text-align:center}
+    .msg.err{color:var(--tomato)}
+    .msg.ok{color:var(--accent)}
+    .shake{animation:shake .38s}
+    @keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}}
+    @media (prefers-reduced-motion:reduce){.shake{animation:none}*{transition:none!important}}
+
+    .foot{margin-top:22px;text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.3px}
+    @media (max-width:420px){.card{padding:24px 18px 20px}h1{font-size:23px}.logo-box{font-size:26px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="logo"><span class="logo-box">Sigmund<span>:re</span></span></div>
+
+    <form class="card" id="form" autocomplete="on" novalidate>
+      <span class="sticker">Members only</span>
+      <h1>Enter the password</h1>
+      <p class="sub">This game library is private. Enter the password to start playing.</p>
+
+      <input type="text" name="username" value="sigmund" autocomplete="username" hidden aria-hidden="true" tabindex="-1">
+      <label for="pw">Password</label>
+      <div class="field">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+        <input id="pw" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required autofocus>
+        <button type="button" class="peek" id="peek" aria-label="Show password" title="Show password">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+
+      <label class="remember"><input type="checkbox" id="remember" checked> Keep me signed in for 30 days</label>
+
+      <button class="go" id="go" type="submit">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+        Let me in
+      </button>
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
+    </form>
+
+    <div class="foot">2,500+ free games · behind one password</div>
+  </main>
+
+<script>
+(function () {
+  'use strict';
+  var COOKIE = 'sig_auth';
+  var SALT = 'sigmund:re|';            // must match docker/40-site-password.sh
+  var form = document.getElementById('form'), pw = document.getElementById('pw');
+  var msg = document.getElementById('msg'), go = document.getElementById('go');
+  var secure = location.protocol === 'https:' ? '; Secure' : '';
+
+  function setCookie(v, maxAge) {
+    document.cookie = COOKIE + '=' + v + '; Path=/; SameSite=Lax' + secure + (maxAge != null ? '; Max-Age=' + maxAge : '');
+  }
+  function say(text, cls) { msg.textContent = text; msg.className = 'msg ' + (cls || ''); }
+
+  // Signing out: /login.html?logout clears the cookie.
+  if (/[?&]logout\b/.test(location.search)) {
+    setCookie('', 0);
+    history.replaceState(null, '', location.pathname);
+    say('You’ve been signed out.', 'ok');
+  }
+
+  document.getElementById('peek').onclick = function () {
+    var show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    pw.focus();
+  };
+
+  /* SHA-256 → hex. Uses WebCrypto when available (HTTPS/localhost), otherwise a small JS fallback (plain HTTP on a LAN). */
+  function sha256(str) {
+    var bytes = new TextEncoder().encode(str);
+    if (window.crypto && crypto.subtle) {
+      return crypto.subtle.digest('SHA-256', bytes).then(hex);
+    }
+    return Promise.resolve(hex(sha256js(bytes)));
+  }
+  function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function sha256js(msgBytes) {
+    var K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    var H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    var l = msgBytes.length, n = ((l + 9 + 63) >> 6) << 6, m = new Uint8Array(n);
+    m.set(msgBytes); m[l] = 0x80;
+    var bits = l * 8; m[n - 4] = bits >>> 24; m[n - 3] = bits >>> 16; m[n - 2] = bits >>> 8; m[n - 1] = bits;
+    var w = new Array(64), r = function (x, c) { return (x >>> c) | (x << (32 - c)); };
+    for (var o = 0; o < n; o += 64) {
+      for (var i = 0; i < 16; i++) w[i] = (m[o + 4*i] << 24) | (m[o + 4*i + 1] << 16) | (m[o + 4*i + 2] << 8) | m[o + 4*i + 3];
+      for (i = 16; i < 64; i++) {
+        var s0 = r(w[i-15], 7) ^ r(w[i-15], 18) ^ (w[i-15] >>> 3), s1 = r(w[i-2], 17) ^ r(w[i-2], 19) ^ (w[i-2] >>> 10);
+        w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+      }
+      var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (i = 0; i < 64; i++) {
+        var t1 = (h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+        var t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    var out = new Uint8Array(32);
+    for (i = 0; i < 8; i++) { out[4*i] = H[i] >>> 24; out[4*i+1] = H[i] >>> 16; out[4*i+2] = H[i] >>> 8; out[4*i+3] = H[i]; }
+    return out.buffer;
+  }
+
+  function fail(text) {
+    say(text, 'err');
+    form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
+    go.disabled = false; pw.select();
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var value = pw.value;
+    if (!value) return fail('Type the password first.');
+    go.disabled = true; say('Checking…');
+    sha256(SALT + value).then(function (token) {
+      setCookie(token, document.getElementById('remember').checked ? 60 * 60 * 24 * 30 : null);
+      // The server decides: /auth-check answers 204 only when the cookie matches the site password.
+      return fetch('/auth-check', { cache: 'no-store', credentials: 'same-origin' });
+    }).then(function (res) {
+      if (res.status === 204) {
+        say('You’re in. Loading games…', 'ok');
+        // Keep the page they were heading to (e.g. #/play/some-game survives the redirect here).
+        location.replace('/' + (/^#\/[^\s]*$/.test(location.hash) ? location.hash : ''));
+      } else if (res.status === 429) {
+        setCookie('', 0); fail('Too many tries. Wait a minute and try again.');
+      } else {
+        setCookie('', 0); fail('That’s not the password.');
+      }
+    }).catch(function () {
+      setCookie('', 0); fail('Couldn’t reach the server. Try again.');
+    });
+  });
+})();
+</script>
+</body>
+</html>

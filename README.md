@@ -11,7 +11,8 @@ There's no backend: nginx serves the files, and the page loads its catalog from 
 | `games.json` | Catalog: title, game file, thumbnail, platform, categories |
 | `UGS-Files/` | The game pages (loaded in an iframe on the play page) |
 | `thumbnails/` | One 480×270 JPG per game, same name and subfolder as the game |
-| `Dockerfile`, `nginx.conf` | Container image; nginx listens on **port 3847** |
+| `login.html` | Sign-in page (see *Password* below) |
+| `Dockerfile`, `nginx.conf`, `docker/` | Container image; nginx listens on **port 3847** and checks the password |
 | `docker-compose.yml` | Optional, only for Coolify's Docker Compose build pack |
 
 ## Deploy on Coolify (Dockerfile build pack)
@@ -19,7 +20,8 @@ There's no backend: nginx serves the files, and the page loads its catalog from 
 1. Push this folder to a Git repo (GitHub, Gitea, etc.) and add it as a resource in Coolify.
 2. Set **Build Pack** to **Dockerfile** (Dockerfile location: `/Dockerfile`).
 3. Set **Ports Exposes** to `3847`. You don't need to publish a host port because Coolify's proxy routes your domain to it.
-4. Add your domain and deploy. The health check is at `/healthz`.
+4. Add an environment variable `SITE_PASSWORD` with the password visitors must enter.
+5. Add your domain and deploy. The health check is at `/healthz`.
 
 To use a different port, change `listen 3847` in `nginx.conf` and `EXPOSE` / the `HEALTHCHECK` URL in the `Dockerfile`, then update Ports Exposes to match.
 
@@ -35,15 +37,27 @@ To add them back later (for example with Git LFS: `git lfs track "UGS-Files/html
 
 The rest of the library is about 0.4 GB, so the first build and push will still take a little while.
 
+## Password (sign-in page)
+
+The whole site sits behind one shared password. Visitors land on `login.html`, and nginx refuses every page, game, thumbnail and `games.json` until they sign in.
+
+- **Set the password** with the `SITE_PASSWORD` environment variable. In Coolify: your resource → **Environment Variables** → add `SITE_PASSWORD`, then redeploy. Locally: `docker run --rm -p 3847:3847 -e SITE_PASSWORD='your password' sigmund-re`.
+- **Change it** by changing the variable and restarting. Everyone who was signed in has to sign in again.
+- If `SITE_PASSWORD` isn't set, the site stays locked for everyone (the container log says so).
+- **Sign out:** Settings → *Sign out*, or open `/login.html?logout`. "Keep me signed in" lasts 30 days; unticked, it lasts until the browser closes.
+
+How it works: `login.html` hashes the password (SHA-256 with a fixed salt) into a `sig_auth` cookie and asks `/auth-check` whether it's right. At startup `docker/40-site-password.sh` hashes `SITE_PASSWORD` the same way and writes the nginx rule that compares the two. The password itself is never stored in the repo or the image. Wrong guesses are rate-limited to about 30 requests a minute.
+This is a simple shared password, not user accounts: use something longer than a single word, and serve the site over HTTPS (Coolify does this for you) so the cookie can't be read in transit.
+
 ## Run locally
 
 ```bash
 docker build -t sigmund-re .
-docker run --rm -p 3847:3847 sigmund-re
+docker run --rm -p 3847:3847 -e SITE_PASSWORD='letmein' sigmund-re
 # open http://localhost:3847
 ```
 
-You can also serve the folder with any static server, for example `python -m http.server 3847`. Opening `index.html` directly from disk won't work because the page has to fetch `games.json`.
+You can also serve the folder with any static server, for example `python -m http.server 3847`, but then there's no password check (it lives in nginx). Opening `index.html` directly from disk won't work because the page has to fetch `games.json`.
 
 ## Customising
 
