@@ -42,7 +42,23 @@ const THEMES = [
   { id: 'system', name: 'Match device', note: 'Black or Paper, following your device setting.', swatch: ['#0b0b0c', '#f4efe6', '#ffc93c'] }
 ];
 const ACCENTS = [['mustard', '#ffc93c'], ['tomato', '#ff5a36'], ['teal', '#1fc7b2'], ['lilac', '#b39cff'], ['sky', '#57b7ff'], ['lime', '#b8e05a'], ['pink', '#ff8ad8']];
-const SETTINGS_DEFAULTS = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true, autostart: false, newtab: false };
+const SETTINGS_DEFAULTS = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true, autostart: false, newtab: false, cloak: 'off' };
+
+/* ---------- tab cloak ----------
+   Changes only this browser tab's title and icon. Icons come from Google's favicon service.
+   To add one: { id, name, title (tab text), domain (site whose icon to show) }. */
+const CLOAKS = [
+  { id: 'off', name: 'Off', note: 'Show the real name and icon.' },
+  { id: 'classroom', name: 'Google Classroom', title: 'Classes', domain: 'classroom.google.com' },
+  { id: 'canvas', name: 'Canvas', title: 'Dashboard', domain: 'canvas.instructure.com' },
+  { id: 'google', name: 'Google', title: 'Google', domain: 'www.google.com' },
+  { id: 'docs', name: 'Google Docs', title: 'Google Docs', domain: 'docs.google.com' },
+  { id: 'drive', name: 'Google Drive', title: 'My Drive - Google Drive', domain: 'drive.google.com' },
+  { id: 'invisible', name: 'Invisible', note: 'Blank tab name and no icon.' }
+];
+const favUrl = d => `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(d)}`;
+const BLANK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+const BLANK_TITLE = '\u2800';   // a blank character browsers don't trim, so the tab shows nothing
 
 const ICONS = {
   home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>',
@@ -112,12 +128,31 @@ function applySettings() {
   if (link.getAttribute('href') !== href) link.setAttribute('href', href);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = (THEMES.find(x => x.id === t) || THEMES[0]).swatch[0];
+  applyCloak();
 }
 function setSetting(k, v) { settings[k] = v; store.set('sig:settings', settings); applySettings(); }
 matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => { if (settings.theme === 'system') applySettings(); });
 
 let GAMES = [], BY_SLUG = new Map();
 const BRAND = CONFIG.brand.join('');
+let realTitle = `${BRAND} · Free Online Games`;
+function setTitle(t) { realTitle = t; applyCloak(); }
+function applyCloak() {
+  const c = CLOAKS.find(x => x.id === settings.cloak) || CLOAKS[0];
+  let title = realTitle, icon = 'assets/favicon.svg';
+  if (c.id === 'invisible') { title = BLANK_TITLE; icon = BLANK_ICON; }
+  else if (c.domain) { title = c.title; icon = favUrl(c.domain); }
+  if (document.title !== title) document.title = title;
+  const old = document.querySelector('link[rel~="icon"]');
+  if (!old || old.getAttribute('href') !== icon) {
+    // Swap in a fresh <link>: some browsers ignore an href change on the existing one.
+    const l = document.createElement('link'); l.rel = 'icon'; l.href = icon;
+    if (icon.endsWith('.svg')) l.type = 'image/svg+xml';
+    old ? old.replaceWith(l) : document.head.appendChild(l);
+  }
+  // Remembered so index.html can apply the cloak before the page even loads (no flash of the real title).
+  store.set('sig:cloak', c.id === 'off' ? null : { title, icon });
+}
 const app = $('#app');
 
 /* ---------- seeded daily randomness ---------- */
@@ -337,15 +372,22 @@ function stageEl() {
   st.addEventListener('click', e => {
     const b = e.target.closest('[data-stage]'); if (!b) return;
     const a = b.dataset.stage;
-    if (a === 'shrink') { onPlayPage() ? setMode('docked') : setMode('mini'); }
+    if (a === 'shrink') { exitFullWindow(); }
     else if (a === 'expand') { setMode('expanded'); }
     else if (a === 'resume') { location.hash = '#/play/' + player.g.slug; }
     else if (a === 'close') { closeGame(); }
   });
   new ResizeObserver(positionDock).observe(document.body);
   addEventListener('resize', positionDock);
-  addEventListener('keydown', e => { if (e.key === 'Escape' && player.mode === 'expanded') onPlayPage() ? setMode('docked') : setMode('mini'); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && player.mode === 'expanded') exitFullWindow(); });
   return st;
+}
+/* Leaving full window always goes back to the game's own page and its normal player.
+   (The small corner window is only for when you browse to another page.) */
+function exitFullWindow() {
+  if (!player.g) return;
+  if (onPlayPage()) setMode('docked');
+  else location.hash = '#/play/' + player.g.slug;   // the play page re-docks the running game without reloading it
 }
 function onPlayPage() { return !!player.g && location.hash === '#/play/' + player.g.slug; }
 function launch(g) {
@@ -423,7 +465,7 @@ function pagePlay(slug) {
   $('#reloadBtn').onclick = () => { if (player.g === g) { const f = $('#stageFrame iframe'); f.src = f.src; } else start(); };
   $('#fsBtn').onclick = () => { if (player.g === g || start()) setMode('expanded'); };
   $('#favBtn').onclick = e => { toggleFav(slug); e.currentTarget.classList.toggle('on', favs.has(slug)); };
-  document.title = `${g.t} · ${BRAND}`;
+  setTitle(`${g.t} · ${BRAND}`);
 }
 function pageNotFound() {
   app.innerHTML = `<div class="empty"><b>That page doesn't exist</b><a class="see" href="#/" style="margin-top:14px">Back home${ic('chevron')}</a></div>`;
@@ -432,7 +474,7 @@ function pageNotFound() {
 /* ---------- router ---------- */
 function route() {
   const parts = decodeURIComponent(location.hash.replace(/^#/, '')).split('/').filter(Boolean);
-  document.title = `${BRAND} · Free Online Games`;
+  setTitle(`${BRAND} · Free Online Games`);
   renderRail(parts.length ? '#/' + (parts[0] === 'p' ? parts.slice(0, 2) : parts.slice(0, 2)).join('/') : '#/');
   $('#suggest').hidden = true;
   if (player.g && !(parts[0] === 'play' && parts[1] === player.g.slug)) setMode('mini');
@@ -499,6 +541,12 @@ function renderSettings() {
         <div class="themes">${THEMES.map(t => `<button class="theme-opt" data-theme-id="${t.id}" aria-pressed="${settings.theme === t.id}">
           <span class="sw">${t.swatch.map(c => `<i style="background:${c}"></i>`).join('')}</span><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`).join('')}</div>
       </div>
+      <div class="set-group"><span class="label">Tab cloak</span>
+        <div class="cloaks">${CLOAKS.map(c => `<button class="cloak-opt" data-cloak-id="${c.id}" aria-pressed="${settings.cloak === c.id}">
+          <span class="ci">${c.id === 'off' ? '<img src="assets/favicon.svg" alt="">' : c.domain ? `<img src="${favUrl(c.domain)}" alt="" referrerpolicy="no-referrer">` : ''}</span>
+          <span><b>${esc(c.name)}</b><small>${c.domain ? `Tab shows “${esc(c.title)}”` : esc(c.note)}</small></span></button>`).join('')}</div>
+        <p class="set-note">Changes only the name and icon of this browser tab. Saved on this device.</p>
+      </div>
       <div class="set-group"><span class="label">Accent color</span>
         <div class="swatches">${ACCENTS.map(([id, c]) => `<button class="swatch" style="--sw:${c}" data-accent-id="${id}" aria-pressed="${settings.accent === id}" title="${id}" aria-label="${id}"></button>`).join('')}</div>
       </div>
@@ -532,6 +580,7 @@ function wireSettings() {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.themeId) setSetting('theme', b.dataset.themeId);
     else if (b.dataset.accentId) setSetting('accent', b.dataset.accentId);
+    else if (b.dataset.cloakId) setSetting('cloak', b.dataset.cloakId);
     else if (b.dataset.sizeId) setSetting('size', b.dataset.sizeId);
     else if (b.dataset.toggle) setSetting(b.dataset.toggle, !settings[b.dataset.toggle]);
     else if (b.dataset.clear === 'recent') { recent = []; store.set('gs:recent', recent); toast('History cleared'); }

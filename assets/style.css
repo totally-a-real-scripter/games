@@ -284,6 +284,16 @@ svg.i .dot{fill:currentColor;stroke:none}
 .theme-opt b{font-size:14.5px}
 .theme-opt small{font-size:12px;color:var(--muted);line-height:1.3}
 .theme-opt[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:1px}
+/* tab cloak choices */
+.cloaks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.cloak-opt{display:flex;align-items:center;gap:10px;padding:9px 10px;border:var(--bw) solid var(--line);border-radius:12px;background:var(--paper-2);text-align:left;min-width:0}
+.cloak-opt>span:last-child{min-width:0}
+.cloak-opt .ci{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:8px;background:#fff;border:1.5px solid var(--line)}
+.cloak-opt .ci img{width:20px;height:20px;display:block}
+.cloak-opt[data-cloak-id="invisible"] .ci{background:transparent;border-style:dashed}
+.cloak-opt b{display:block;font-size:14px}
+.cloak-opt small{display:block;font-size:12px;color:var(--muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cloak-opt[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:1px}
 .swatches{display:flex;flex-wrap:wrap;gap:10px}
 .swatch{width:38px;height:38px;border-radius:50%;border:var(--bw) solid var(--line);background:var(--sw)}
 .swatch[aria-pressed="true"]{outline:3px solid var(--ink);outline-offset:2px}

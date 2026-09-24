@@ -12,6 +12,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
   <script>
+    /* Tab cloak: apply the saved tab name + icon before the page paints (set in Settings, see CLOAKS in app.js). */
+    try { var cl = JSON.parse(localStorage.getItem('sig:cloak')); if (cl && cl.title) { document.title = cl.title; var fi = document.querySelector('link[rel~="icon"]'); if (fi) { fi.removeAttribute('type'); fi.href = cl.icon; } } } catch (e) {}
     /* Apply saved settings before the page paints (keep defaults in sync with SETTINGS_DEFAULTS in app.js). */
     (function () {
       var o = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true };

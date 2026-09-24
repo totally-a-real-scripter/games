@@ -44,7 +44,7 @@ The whole site sits behind one shared password. Visitors who aren't signed in se
 - **Set the password** with the `SITE_PASSWORD` environment variable. In Coolify: your resource → **Environment Variables** → add `SITE_PASSWORD`, then redeploy. Locally: `docker run --rm -p 3847:3847 -e SITE_PASSWORD='your password' sigmund-re`.
 - **Change it** by changing the variable and restarting. Everyone who was signed in has to sign in again.
 - If `SITE_PASSWORD` isn't set, the site stays locked for everyone (the container log says so).
-- **Sign out:** Settings → *Sign out*, or open `/logout`. "Keep me signed in" lasts 30 days; unticked, it lasts until the browser closes.
+- **Sign out:** Settings → *Sign out*, or open `/logout`. Visitors are also signed out when they close the browser.
 - **Rename or restyle the sign-in page:** edit `login.html` (name, text, colors). It's a single self-contained file.
 
 How it works: the sign-in page hashes the password (SHA-256 with a fixed salt) into a `lw_session` cookie and asks `/auth-check` whether it's right. At startup `docker/40-site-password.sh` hashes `SITE_PASSWORD` the same way and writes the nginx rule that compares the two. The password itself is never stored in the repo or the image. Wrong guesses are rate-limited to about 30 requests a minute.

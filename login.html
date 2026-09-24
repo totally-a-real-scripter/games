@@ -9,6 +9,10 @@
   <meta name="theme-color" content="#f6f2e9" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#11151b" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23285e45'/%3E%3Cpath d='M16 6v2M11 10h10l-1.5 3h-7zM12.5 13h7v9a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2z' stroke='%23fbf8f1' stroke-width='1.8' fill='none' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='18' r='2.2' fill='%23f0b541'/%3E%3C/svg%3E">
+  <script>
+    /* If a tab cloak was chosen on this device, use it here too. */
+    try { var cl = JSON.parse(localStorage.getItem('sig:cloak')); if (cl && cl.title) { document.title = cl.title; var fi = document.querySelector('link[rel~="icon"]'); if (fi) { fi.removeAttribute('type'); fi.href = cl.icon; } } } catch (e) {}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -76,12 +80,8 @@
     .peek:hover{background:var(--accent-soft)}
     .peek svg{width:19px;height:19px}
 
-    .remember{display:flex;align-items:center;gap:10px;margin:16px 0 22px;font-size:14.5px;color:var(--muted);cursor:pointer;user-select:none}
-    .remember input{appearance:none;width:19px;height:19px;margin:0;border:1.5px solid var(--line-strong);border-radius:5px;background:var(--bg);display:grid;place-items:center;cursor:pointer;flex:none}
-    .remember input:checked{background:var(--accent);border-color:var(--accent)}
-    .remember input:checked::after{content:"";width:9px;height:5px;border:2px solid var(--accent-ink);border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
 
-    .go{width:100%;height:50px;border:0;border-radius:11px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;font-size:16px;cursor:pointer;
+    .go{width:100%;height:50px;margin-top:20px;border:0;border-radius:11px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;font-size:16px;cursor:pointer;
       display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:filter .15s,transform .05s}
     .go:hover{filter:brightness(1.08)}
     .go:active{transform:translateY(1px)}
@@ -157,8 +157,6 @@
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
-
-      <label class="remember"><input type="checkbox" id="remember" checked> Keep me signed in on this device</label>
 
       <button class="go" id="go" type="submit">Continue
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -270,7 +268,7 @@
     if (!value) return fail('Please enter your access code.');
     go.disabled = true; say('Checking…');
     sha256(SALT + value).then(function (token) {
-      setCookie(token, document.getElementById('remember').checked ? 60 * 60 * 24 * 30 : null);
+      setCookie(token);   // session cookie: signed out when the browser closes
       // The server decides: /auth-check answers 204 only when the cookie matches.
       return fetch('/auth-check', { cache: 'no-store', credentials: 'same-origin' });
     }).then(function (res) {
