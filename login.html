@@ -261,6 +261,24 @@
     return out.buffer;
   }
 
+  /* Auto-open in about:blank (Settings > about:blank). Keep writeBlankPage in sync with the copy in assets/app.js. */
+  var BLANK_EXIT = 'https://www.google.com';
+  function wantsBlank() {
+    if (window.top !== window) return false;   // already inside the about:blank tab
+    try { var s = JSON.parse(localStorage.getItem('sig:settings')); return !!(s && s.autoblank); } catch (e) { return false; }
+  }
+  function escH(v) { return String(v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function writeBlankPage(w) {
+    var cl = null; try { cl = JSON.parse(localStorage.getItem('sig:cloak')); } catch (e) {}
+    var d = w.document;
+    d.open();
+    d.write('<!DOCTYPE html><html data-sig-blank><head><meta charset="utf-8"><title>' + (cl && cl.title ? escH(cl.title) : '') + '</title>' +
+      (cl && cl.icon ? '<link rel="icon" href="' + escH(cl.icon) + '">' : '') +
+      '<style>html,body{margin:0;height:100%;overflow:hidden;background:#000}iframe{display:block;border:0;width:100%;height:100%}</style></head>' +
+      '<body><iframe src="' + escH(location.origin + '/app') + '" allow="fullscreen; autoplay; gamepad; clipboard-read; clipboard-write" allowfullscreen></iframe></body></html>');
+    d.close();
+  }
+
   function fail(text) {
     say(text, 'err'); field.classList.add('bad');
     form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
@@ -278,7 +296,11 @@
       return fetch('/auth-check', { cache: 'no-store', credentials: 'same-origin' });
     }).then(function (res) {
       if (res.status === 204) {
-        say('Signed in. Loading your portal…', 'ok');
+        if (wantsBlank()) {
+          var w = window.open('about:blank', '_blank');
+          if (w) { writeBlankPage(w); location.replace(BLANK_EXIT); return; }
+          say('Pop-up blocked, so about:blank couldn’t open. Loading here instead…', 'err');
+        } else say('Signed in. Loading your portal…', 'ok');
         // Load the site into this page (same address). A reload brings back this sign-in page.
         return fetch('/app', { cache: 'no-store', credentials: 'same-origin', redirect: 'manual' }).then(function (r) {
           if (r.status !== 200) throw new Error('app ' + r.status);

@@ -42,18 +42,18 @@ const THEMES = [
   { id: 'system', name: 'Match device', note: 'Black or Paper, following your device setting.', swatch: ['#0b0b0c', '#f4efe6', '#ffc93c'] }
 ];
 const ACCENTS = [['mustard', '#ffc93c'], ['tomato', '#ff5a36'], ['teal', '#1fc7b2'], ['lilac', '#b39cff'], ['sky', '#57b7ff'], ['lime', '#b8e05a'], ['pink', '#ff8ad8']];
-const SETTINGS_DEFAULTS = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true, autostart: false, newtab: false, cloak: 'off' };
+const SETTINGS_DEFAULTS = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true, autostart: false, newtab: false, autoblank: false, cloak: 'off' };
 
 /* ---------- tab cloak ----------
    Changes only this browser tab's title and icon. Icons come from Google's favicon service.
-   To add one: { id, name, title (tab text), domain (site whose icon to show) }. */
+   To add one: { id, name, title (tab text), icon (favicon URL) }. */
 const CLOAKS = [
   { id: 'off', name: 'Off', note: 'Show the real name and icon.' },
-  { id: 'classroom', name: 'Google Classroom', title: 'Classes', domain: 'classroom.google.com' },
-  { id: 'canvas', name: 'Canvas', title: 'Dashboard', domain: 'canvas.instructure.com' },
-  { id: 'google', name: 'Google', title: 'Google', domain: 'www.google.com' },
-  { id: 'docs', name: 'Google Docs', title: 'Google Docs', domain: 'docs.google.com' },
-  { id: 'drive', name: 'Google Drive', title: 'My Drive - Google Drive', domain: 'drive.google.com' },
+  { id: 'classroom', name: 'Google Classroom', title: 'Classes', icon: 'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png' },
+  { id: 'canvas', name: 'Canvas', title: 'Dashboard', icon: 'https://canvas.instructure.com/favicon.ico' },
+  { id: 'google', name: 'Google', title: 'Google', icon: 'https://www.google.com/favicon.ico' },
+  { id: 'docs', name: 'Google Docs', title: 'Google Docs', icon: 'https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico' },
+  { id: 'drive', name: 'Google Drive', title: 'My Drive - Google Drive', icon: 'https://ssl.gstatic.com/images/branding/product/2x/drive_2020q4_32dp.png' },
   { id: 'invisible', name: 'Invisible', note: 'Blank tab name and no icon.' }
 ];
 const favUrl = d => `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(d)}`;
@@ -141,7 +141,7 @@ function applyCloak() {
   const c = CLOAKS.find(x => x.id === settings.cloak) || CLOAKS[0];
   let title = realTitle, icon = 'assets/favicon.svg';
   if (c.id === 'invisible') { title = BLANK_TITLE; icon = BLANK_ICON; }
-  else if (c.domain) { title = c.title; icon = favUrl(c.domain); }
+  else if (c.icon) { title = c.title; icon = c.icon; }
   if (document.title !== title) document.title = title;
   const old = document.querySelector('link[rel~="icon"]');
   if (!old || old.getAttribute('href') !== icon) {
@@ -152,6 +152,36 @@ function applyCloak() {
   }
   // Remembered so index.html can apply the cloak before the page even loads (no flash of the real title).
   store.set('sig:cloak', c.id === 'off' ? null : { title, icon });
+  // Inside the about:blank tab the real tab is the outer page, so mirror the cloak there.
+  if (IN_BLANK) try {
+    const td = window.top.document;
+    td.title = c.id === 'off' ? '' : title;   // empty title: the tab just reads "about:blank"
+    td.querySelectorAll('link[rel~="icon"]').forEach(l => l.remove());
+    if (c.id !== 'off') { const l = td.createElement('link'); l.rel = 'icon'; l.href = icon; td.head.appendChild(l); }
+  } catch (e) {}
+}
+
+/* ---------- about:blank ----------
+   Opens the site inside a frame on an about:blank tab, so the address bar and history show about:blank.
+   This tab then moves to BLANK_EXIT (going back to the sign-in page would sign the about:blank tab out).
+   Keep writeBlankPage in sync with the copy in login.html. */
+const BLANK_EXIT = 'https://www.google.com';
+const IN_BLANK = (() => { try { return window.top !== window && window.top.document.documentElement.hasAttribute('data-sig-blank'); } catch (e) { return false; } })();
+function writeBlankPage(w) {
+  const cl = store.get('sig:cloak', null), d = w.document;
+  d.open();
+  d.write(`<!DOCTYPE html><html data-sig-blank><head><meta charset="utf-8"><title>${cl && cl.title ? esc(cl.title) : ''}</title>` +
+    (cl && cl.icon ? `<link rel="icon" href="${esc(cl.icon)}">` : '') +
+    `<style>html,body{margin:0;height:100%;overflow:hidden;background:#000}iframe{display:block;border:0;width:100%;height:100%}</style></head>` +
+    `<body><iframe src="${esc(location.origin + '/app')}" allow="fullscreen; autoplay; gamepad; clipboard-read; clipboard-write" allowfullscreen></iframe></body></html>`);
+  d.close();
+}
+function openInBlank() {
+  if (IN_BLANK) return toast('Already open in about:blank');
+  const w = window.open('about:blank', '_blank');
+  if (!w) return toast('Pop-up blocked. Allow pop-ups for this site and try again.');
+  writeBlankPage(w);
+  location.replace(BLANK_EXIT);
 }
 const app = $('#app');
 
@@ -543,8 +573,8 @@ function renderSettings() {
       </div>
       <div class="set-group"><span class="label">Tab cloak</span>
         <div class="cloaks">${CLOAKS.map(c => `<button class="cloak-opt" data-cloak-id="${c.id}" aria-pressed="${settings.cloak === c.id}">
-          <span class="ci">${c.id === 'off' ? '<img src="assets/favicon.svg" alt="">' : c.domain ? `<img src="${favUrl(c.domain)}" alt="" referrerpolicy="no-referrer">` : ''}</span>
-          <span><b>${esc(c.name)}</b><small>${c.domain ? `Tab shows “${esc(c.title)}”` : esc(c.note)}</small></span></button>`).join('')}</div>
+          <span class="ci">${c.id === 'off' ? '<img src="assets/favicon.svg" alt="">' : c.icon ? `<img src="${c.icon}" alt="" referrerpolicy="no-referrer">` : ''}</span>
+          <span><b>${esc(c.name)}</b><small>${c.icon ? `Tab shows “${esc(c.title)}”` : esc(c.note)}</small></span></button>`).join('')}</div>
         <p class="set-note">Changes only the name and icon of this browser tab. Saved on this device.</p>
       </div>
       <div class="set-group"><span class="label">Accent color</span>
@@ -560,6 +590,12 @@ function renderSettings() {
         ${sw('autostart', 'Start games right away', 'Skip the “Start game” screen.')}
         ${sw('newtab', 'Open games in a new tab', 'Instead of playing inside the page.')}
       </div>
+      <div class="set-group"><span class="label">about:blank</span>
+        <div class="opt-row"><span><b>Open in about:blank</b><small>${IN_BLANK ? 'You’re already in an about:blank tab.' : 'Moves the site into a new tab whose address reads about:blank.'}</small></span>
+          <button class="tbtn" data-blank ${IN_BLANK ? 'disabled' : ''}>${ic('external')}Open</button></div>
+        ${sw('autoblank', 'Auto-open in about:blank', 'After you sign in, the site opens in an about:blank tab.')}
+        <p class="set-note">This tab goes to Google afterwards. Allow pop-ups for this site if nothing opens.</p>
+      </div>
       <div class="set-group"><span class="label">Your data</span>
         <div class="danger">
           <button class="tbtn" data-clear="recent">${ic('clock')}Clear recently played</button>
@@ -567,7 +603,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-23-5.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-23-6.</p>
       </div>
     </div>`;
 }
@@ -583,6 +619,7 @@ function wireSettings() {
     else if (b.dataset.cloakId) setSetting('cloak', b.dataset.cloakId);
     else if (b.dataset.sizeId) setSetting('size', b.dataset.sizeId);
     else if (b.dataset.toggle) setSetting(b.dataset.toggle, !settings[b.dataset.toggle]);
+    else if ('blank' in b.dataset) return openInBlank();
     else if (b.dataset.clear === 'recent') { recent = []; store.set('gs:recent', recent); toast('History cleared'); }
     else if (b.dataset.clear === 'favs') { favs.clear(); store.set('gs:favs', []); toast('Favorites cleared'); }
     else if (b.dataset.clear === 'settings') { Object.assign(settings, SETTINGS_DEFAULTS); store.set('sig:settings', settings); applySettings(); toast('Settings reset'); }
