@@ -533,3 +533,11 @@ textarea.ch-in{height:auto;padding:8px 10px;font-family:var(--mono);font-size:12
 @keyframes ctab-wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg) scale(1.08)}75%{transform:rotate(14deg) scale(1.08)}}
 :root[data-motion="off"] .ctab-btn,:root[data-motion="off"] .cheat-panel{transition:none;animation:none}
 :root[data-motion="off"] .ctab.near .ctab-btn svg.i{animation:none}
+
+/* setting several scan results at once */
+.ch-bulk{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px;border:1.5px dashed var(--line);border-radius:10px}
+.ch-bulk .ch-in{height:34px;min-width:90px}
+.ch-bulk .tbtn{height:34px;padding:0 10px}
+.ch-pick{accent-color:var(--accent);width:15px;height:15px;margin:0 6px 0 0;vertical-align:-2px;cursor:pointer}
+.ch-hit.picked{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.ch-bulk-note{flex-basis:100%;font-size:11.5px;color:var(--muted)}

@@ -1073,7 +1073,8 @@ const CHEAT = {
   frozen: new Map(),   // key -> { set(), label }
   saveSnap: null,      // localStorage values when the game started, to mark what the game changed
   cheats: [],          // emulator codes: { code, desc, on }
-  busy: false, timer: 0
+  busy: false, timer: 0,
+  picked: new Set()     // ticked scan results, for setting several at once
 };
 const cheatsOn = () => hasEgg('cheats') && settings.cheats !== false;
 const SITE_KEY = k => /^(sig|gs):/.test(k);
@@ -1390,9 +1391,15 @@ function renderCheatPanel() {
         <button class="tbtn ch-go" data-scan="next">Next scan</button>` : ''}
       </div>
       <div class="ch-status" id="chStatus">${s ? `${s.count.toLocaleString()} found${s.capped ? ' (stopped early, too many: try a less common number)' : ''}` : ''}</div>
-      ${s && s.count && s.count <= 200 ? `<div class="ch-hits">${Array.from({ length: s.count }, (_, j) => {
+      ${s && s.count && s.count <= 200 ? `<div class="ch-bulk">
+        <label class="ch-freeze" title="Tick every result"><input type="checkbox" data-pick-all ${CHEAT.picked.size === s.count ? 'checked' : ''}>All</label>
+        <input class="ch-in" type="number" step="any" placeholder="New value" data-bulk-val>
+        <button class="tbtn ch-go" data-bulk="set">Set ${CHEAT.picked.size || s.count}</button><button class="tbtn" data-bulk="freeze">+ freeze</button>
+        <small class="ch-bulk-note">${CHEAT.picked.size ? `Changes the ${CHEAT.picked.size} ticked` : `Nothing ticked: changes all ${s.count}`}</small>
+      </div>
+      <div class="ch-hits">${Array.from({ length: s.count }, (_, j) => {
         const key = hitKey(s, j), fr = CHEAT.frozen.has(key);
-        return `<div class="ch-hit" data-j="${j}"><code title="${esc(hitLabel(s, j))}">${esc(hitLabel(s, j))}</code><span class="ch-cur" data-cur="${j}">${esc(String(hitRead(s, j)))}</span>
+        return `<div class="ch-hit${CHEAT.picked.has(j) ? ' picked' : ''}" data-j="${j}"><code title="${esc(hitLabel(s, j))}"><input type="checkbox" class="ch-pick" data-pick="${j}" ${CHEAT.picked.has(j) ? 'checked' : ''} aria-label="Tick">${esc(hitLabel(s, j))}</code><span class="ch-cur" data-cur="${j}">${esc(String(hitRead(s, j)))}</span>
           <input class="ch-in ch-set" type="number" step="any" placeholder="New" data-set-val="${j}"><button class="tbtn" data-set="${j}">Set</button>
           <label class="ch-freeze" title="Keep it at this value"><input type="checkbox" data-freeze="${j}" ${fr ? 'checked' : ''}>Freeze</label></div>`;
       }).join('')}</div>` : s && s.count > 200 ? `<p class="ch-note">Too many to list. Change the value in the game and do a Next scan.</p>` : ''}`;
@@ -1452,9 +1459,22 @@ function wireCheatPanel(p) {
           CHEAT.scan = findMemory() ? await memFirstScan(type, x, prog) : await varFirstScan(x, prog);
         } else CHEAT.scan = CHEAT.scan.kind === 'mem' ? await memNextScan(CHEAT.scan, mode, x, prog) : varNextScan(CHEAT.scan, mode, x);
       } catch (err) { toast(err.message || 'Scan failed'); }
-      CHEAT.busy = false; renderCheatPanel();
+      CHEAT.busy = false; CHEAT.picked.clear(); renderCheatPanel();
       const v = $('[data-scan-val]', p); if (v) { v.value = raw; v.focus(); }
       return;
+    }
+    if (d.bulk) {
+      const s = CHEAT.scan, x = +$('[data-bulk-val]', p).value, raw = $('[data-bulk-val]', p).value.trim();
+      if (!s || raw === '' || !isFinite(x)) return toast('Type the value to set first');
+      const js = CHEAT.picked.size ? [...CHEAT.picked] : Array.from({ length: s.count }, (_, j) => j);
+      for (const j of js) {
+        hitWrite(s, j, x);
+        const key = hitKey(s, j);
+        if (d.bulk === 'freeze' || CHEAT.frozen.has(key)) CHEAT.frozen.set(key, { set: () => hitWrite(s, j, x) });
+      }
+      if (d.bulk === 'freeze') ensureCheatTimer();
+      toast(`${d.bulk === 'freeze' ? 'Set and froze' : 'Set'} ${js.length} value${js.length === 1 ? '' : 's'} to ${x}`);
+      return renderCheatPanel();
     }
     if (d.set) {
       const s = CHEAT.scan, j = +d.set, x = +$(`[data-set-val="${j}"]`, p).value;
@@ -1482,6 +1502,10 @@ function wireCheatPanel(p) {
       if (el.checked) { const x = hitRead(s, j); CHEAT.frozen.set(key, { set: () => hitWrite(s, j, x) }); ensureCheatTimer(); }
       else CHEAT.frozen.delete(key);
       renderCheatPanel();
+    } else if (el.dataset.pick !== undefined) {
+      el.checked ? CHEAT.picked.add(+el.dataset.pick) : CHEAT.picked.delete(+el.dataset.pick); renderCheatPanel();
+    } else if (el.dataset.pickAll !== undefined) {
+      CHEAT.picked.clear(); if (el.checked && CHEAT.scan) for (let j = 0; j < CHEAT.scan.count; j++) CHEAT.picked.add(j); renderCheatPanel();
     } else if (el.dataset.emuOn !== undefined) { CHEAT.cheats[+el.dataset.emuOn].on = el.checked; applyEmuCheats(); }
   });
   p.addEventListener('input', e => {
@@ -1489,7 +1513,8 @@ function wireCheatPanel(p) {
     if (el.dataset.speedRange !== undefined) { const v = Math.round(+el.value * 100) / 100; setGameSpeed(v); el.previousElementSibling.querySelector('output').textContent = v + '×'; p.querySelectorAll('[data-speed]').forEach(c => c.classList.toggle('on', +c.dataset.speed === v)); }
     else if (el.dataset.saveFilter !== undefined) { const q = el.value.toLowerCase(); p.querySelectorAll('.ch-save').forEach(x => { x.hidden = !x.dataset.key.toLowerCase().includes(q); }); }
   });
-  p.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.scanVal !== undefined) { e.preventDefault(); p.querySelector(CHEAT.scan ? '[data-scan="next"]' : '[data-scan="first"]')?.click(); } e.stopPropagation(); });
+  p.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.bulkVal !== undefined) { e.preventDefault(); p.querySelector('[data-bulk="set"]')?.click(); }
+    if (e.key === 'Enter' && e.target.dataset.scanVal !== undefined) { e.preventDefault(); p.querySelector(CHEAT.scan ? '[data-scan="next"]' : '[data-scan="first"]')?.click(); } e.stopPropagation(); });
   // Keep the current values fresh while the scanner is open.
   // Also redraw when the game finishes loading and turns out to be a different kind (e.g. its memory appears).
   setInterval(() => {
@@ -1687,7 +1712,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-12.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-13.</p>
       </div>
     </div>`;
 }
