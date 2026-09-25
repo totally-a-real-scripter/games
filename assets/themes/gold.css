@@ -1,0 +1,17 @@
+/* Theme: Gold. Secret theme, unlocked with a code in Settings > Codes. */
+:root[data-theme="gold"]{
+  --paper:#0d0a04;
+  --paper-2:#17120a;
+  --surface:#1c160b;
+  --ink:#fff3cf;
+  --line:#d4a82a;
+  --shadow-c:#000;
+  --muted:#c4ab6c;
+  --dots:rgba(255,204,51,.09);
+  color-scheme:dark;
+}
+:root[data-theme="gold"][data-accent]{--accent:#ffcc33}
+:root[data-theme="gold"] .logo-box{background:linear-gradient(110deg,#b8860b 20%,#ffe27a 40%,#fff6c9 50%,#ffe27a 60%,#b8860b 80%);background-size:250% 100%;animation:gold-shine 3.5s linear infinite}
+:root[data-theme="gold"] h1,:root[data-theme="gold"] h2{color:#ffd966}
+:root[data-theme="gold"][data-motion="off"] .logo-box{animation:none}
+@keyframes gold-shine{from{background-position:100% 0}to{background-position:-150% 0}}

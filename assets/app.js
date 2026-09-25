@@ -55,6 +55,9 @@ const THEMES = [
   { id: 'sunset', name: 'Sunset', note: 'Peach and orange, like the end of a summer day.', swatch: ['#ffe9d6', '#fff6ee', '#3a1a0c'], store: true, dark: false, c: { paper: '#ffe9d6', surface: '#fff6ee', ink: '#3a1a0c', line: '#3a1a0c', shadow: '#3a1a0c', muted: '#8a5a42' } },
   { id: 'lavender', name: 'Lavender', note: 'Soft purple, light and relaxing.', swatch: ['#efe9fb', '#faf7ff', '#2a1d45'], store: true, dark: false, c: { paper: '#efe9fb', surface: '#faf7ff', ink: '#2a1d45', line: '#2a1d45', shadow: '#2a1d45', muted: '#6d5e8e' } },
   { id: 'matcha', name: 'Matcha', note: 'Creamy green tea tones.', swatch: ['#e7efd9', '#f6f9ef', '#1f2e14'], store: true, dark: false, c: { paper: '#e7efd9', surface: '#f6f9ef', ink: '#1f2e14', line: '#1f2e14', shadow: '#1f2e14', muted: '#5a6b48' } },
+  // Secret themes: hidden until unlocked with a code (see EGGS, "codes & easter eggs").
+  { id: 'gold', name: 'Gold', note: 'Everything you touch turns to gold.', swatch: ['#0d0a04', '#1c160b', '#ffcc33'], secret: true, dark: true, c: { paper: '#0d0a04', surface: '#1c160b', ink: '#fff3cf', line: '#d4a82a', shadow: '#000000', muted: '#c4ab6c' } },
+  { id: 'rainbow', name: 'Rainbow', note: 'Outlines and accents that cycle through every color.', swatch: ['#0c0c12', '#ff5ab4', '#57b7ff'], secret: true, dark: true, c: { paper: '#0c0c12', surface: '#181822', ink: '#f5f3ff', line: '#b39cff', shadow: '#2a1f55', muted: '#a3a0b8' } },
   { id: 'retro-98', name: 'Retro 98', note: 'Gray boxes and teal desktop, like an old PC.', swatch: ['#008080', '#c0c0c0', '#000000'], store: true, dark: false, c: { paper: '#008080', surface: '#c0c0c0', ink: '#000000', line: '#000000', shadow: '#000000', muted: '#404040' } }
 ];
 const STORE_PRICE = 'FREE';
@@ -150,7 +153,7 @@ const store = {
 const settings = Object.assign({}, SETTINGS_DEFAULTS, store.get('sig:settings', {}));
 /* Themes "bought" in the Theme Store, saved on this device. Themes without store: true are always owned. */
 const ownedThemes = new Set(store.get('sig:themes', []));
-const ownsTheme = id => { const t = THEMES.find(x => x.id === id); return !!t && (!t.store || t.mine || ownedThemes.has(id)); };
+const ownsTheme = id => { const t = THEMES.find(x => x.id === id); return !!t && (t.secret ? hasEgg(id) : (!t.store || t.mine || ownedThemes.has(id))); };
 function buyTheme(id) { ownedThemes.add(id); store.set('sig:themes', [...ownedThemes]); }
 function resolvedTheme() {
   const t = settings.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'black') : settings.theme;
@@ -162,6 +165,7 @@ function applySettings() {
   h.dataset.names = settings.names ? 'on' : 'off'; h.dataset.motion = settings.motion ? 'on' : 'off';
   const changed = DRAFT_ON ? false : paintTheme(THEMES.find(x => x.id === t) || THEMES[0]);
   applyCloak();
+  applyEggs();
   return changed;
 }
 // Returns after redrawing the page when the new theme swaps game pictures or icons.
@@ -499,6 +503,7 @@ function launch(g) {
     $('#stageFrame').innerHTML = `<iframe src="${encPath(g.p)}" title="${esc(g.t)}" allow="autoplay; fullscreen; gamepad; clipboard-write" allowfullscreen></iframe>`;
     player.g = g;
     $('#miniTitle').textContent = g.t;
+    watchGameFrame();
   }
   st.hidden = false;
 }
@@ -508,6 +513,7 @@ function setMode(m) {
   st.dataset.mode = m;
   document.body.classList.toggle('stage-open', m === 'expanded');
   if (m === 'docked') positionDock();
+  requestAnimationFrame(layoutCheatTab);
   if (m === 'expanded' || m === 'docked') setTimeout(() => $('#stageFrame iframe')?.focus(), 50);
 }
 function positionDock() {
@@ -521,6 +527,7 @@ function closeGame() {
   const st = $('#stage'); if (!st) return;
   $('#stageFrame').innerHTML = '';
   player.g = null; setMode('off');
+  CHEAT.frozen.clear(); if (CHEAT.open) renderCheatPanel();
   if (CUR.startsWith('#/play/')) route();
 }
 
@@ -565,7 +572,7 @@ function pagePlay(slug) {
   const ins = $('#insert'); if (ins) ins.onclick = start;
   if (player.g === g) { ins?.remove(); stageEl(); setMode('docked'); requestAnimationFrame(positionDock); }
   else if (settings.autostart && !settings.newtab) start();
-  $('#reloadBtn').onclick = () => { if (player.g === g) { const f = $('#stageFrame iframe'); f.src = f.src; } else start(); };
+  $('#reloadBtn').onclick = () => { if (player.g === g) { const f = $('#stageFrame iframe'); f.src = f.src; watchGameFrame(); } else start(); };
   $('#fsBtn').onclick = () => { if (player.g === g || start()) setMode('expanded'); };
   $('#favBtn').onclick = e => { toggleFav(slug); e.currentTarget.classList.toggle('on', favs.has(slug)); };
   $('#tabBtn').onclick = () => openGameTab(g);
@@ -943,18 +950,569 @@ const THEMES_JSON_README = [
   'Full list of options: assets/themes/README.md'
 ];
 
+/* ---------- codes & easter eggs ----------
+   Settings > Codes. The right code unlocks an easter egg on this device for good (saved as sig:eggs).
+   Codes are stored as hashes so they can't be read from this file. To add one:
+     1. Open the site, press F12, and in the Console type:  codeHash('YOUR CODE')
+     2. Copy the result into `hash` below and give the egg an id, name and note.
+   Kinds: 'theme' (unlocks the secret theme with the same id; it gets a CSS file in assets/themes/),
+          'toggle' (an on/off effect in Settings), 'action' (a button you can press again). */
+const EGGS = [
+  { id: 'gold', kind: 'theme', hash: 'bi0l3rz3ei', name: 'Gold theme', note: 'Everything you touch turns to gold.' },
+  { id: 'rainbow', kind: 'theme', hash: '1uhbkcb7oau', name: 'Rainbow theme', note: 'Outlines and accents that cycle through every color.' },
+  { id: 'snow', kind: 'toggle', hash: '1xqjpcm6irs', name: 'Snowfall', note: 'Snow gently falls over the whole site.' },
+  { id: 'confetti', kind: 'toggle', hash: 'rp4c7kacet', name: 'Confetti clicks', note: 'Every click pops a little burst of confetti.' },
+  { id: 'cheats', kind: 'toggle', hash: '1y3wiblx9cn', name: 'Cheat engine', note: 'A Cheats button on the play page: speed hack, memory scanner, save editor and emulator codes.' },
+  { id: 'barrelroll', kind: 'action', hash: '2bmjxr0gbsu', name: 'Barrel roll', note: 'The whole site does a barrel roll.', button: 'Do it again' }
+];
+function codeHash(code, seed = 0x5169) {
+  const str = 'sig|' + String(code).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+window.codeHash = codeHash;   // for making new codes from the browser console
+const eggs = new Set(store.get('sig:eggs', []));
+const hasEgg = id => eggs.has(id);
+
+// Returns 'new', 'again' or 'nope'.
+function redeemCode(code) {
+  const egg = EGGS.find(e => e.hash === codeHash(code));
+  if (!egg) return 'nope';
+  if (eggs.has(egg.id)) return 'again';
+  eggs.add(egg.id); store.set('sig:eggs', [...eggs]);
+  if (egg.kind === 'toggle') { settings[egg.id] = true; store.set('sig:settings', settings); }
+  applyEggs();
+  if (egg.kind === 'action') runEgg(egg.id);
+  confettiBurst(innerWidth / 2, innerHeight / 3, 40);
+  return 'new';
+}
+function runEgg(id) {
+  if (id === 'barrelroll' && document.body.animate) document.body.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 1200, easing: 'cubic-bezier(.6,.05,.3,1)' });
+}
+function applyEggs() {
+  toggleSnow(hasEgg('snow') && !!settings.snow);
+  document.documentElement.dataset.confetti = hasEgg('confetti') && settings.confetti ? 'on' : 'off';
+  const ch = cheatsOn(); document.documentElement.dataset.cheats = ch ? 'on' : 'off';
+  if (ch && player.g) ensureCheatTimer();
+  if (!ch && CHEAT.open) toggleCheatPanel(false);
+  layoutCheatTab();
+}
+
+// Confetti: a quick burst of little pieces at (x, y).
+const CONFETTI_COLORS = ['#ff5a36', '#ffc93c', '#1fc7b2', '#57b7ff', '#b39cff', '#ff8ad8', '#b8e05a'];
+function confettiBurst(x, y, n = 14) {
+  if (settings.motion === false) return;
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('i'); p.className = 'confetto';
+    const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * (n > 20 ? 220 : 90);
+    p.style.cssText = `left:${x}px;top:${y}px;background:${CONFETTI_COLORS[i % CONFETTI_COLORS.length]};--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d - 40}px;--r:${Math.random() * 720 - 360}deg`;
+    document.body.appendChild(p); setTimeout(() => p.remove(), 1000);
+  }
+}
+addEventListener('pointerdown', e => { if (document.documentElement.dataset.confetti === 'on' && e.button === 0) confettiBurst(e.clientX, e.clientY); }, true);
+
+// Snow: a see-through canvas over the page that clicks pass through.
+let snow = null;
+function toggleSnow(on) {
+  if (!on || settings.motion === false) { if (snow) { cancelAnimationFrame(snow.raf); snow.c.remove(); snow = null; } return; }
+  if (snow) return;
+  const c = document.createElement('canvas'); c.className = 'snow'; c.setAttribute('aria-hidden', 'true'); document.body.appendChild(c);
+  const ctx = c.getContext('2d'), flakes = [];
+  const size = () => { c.width = innerWidth; c.height = innerHeight; };
+  size(); addEventListener('resize', size);
+  for (let i = 0; i < 90; i++) flakes.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: 1 + Math.random() * 2.6, s: .4 + Math.random() * 1.1, w: Math.random() * 6 });
+  snow = { c, raf: 0 };
+  const tick = () => {
+    ctx.clearRect(0, 0, c.width, c.height); ctx.fillStyle = 'rgba(255,255,255,.85)';
+    for (const f of flakes) {
+      f.y += f.s; f.w += .01; f.x += Math.sin(f.w) * .4;
+      if (f.y > c.height + 5) { f.y = -5; f.x = Math.random() * c.width; }
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.3); ctx.fill();
+    }
+    snow.raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+// The Codes section in Settings.
+function codesSettingsHtml() {
+  const found = EGGS.filter(e => hasEgg(e.id));
+  const row = e => {
+    let ctl = '';
+    if (e.kind === 'toggle') ctl = `<button class="switch" role="switch" aria-checked="${!!settings[e.id]}" data-toggle="${e.id}" aria-label="${esc(e.name)}"></button>`;
+    else if (e.kind === 'action') ctl = `<button class="tbtn egg-btn" type="button" data-egg-act="${e.id}">${esc(e.button || 'Do it')}</button>`;
+    else if (e.kind === 'theme') ctl = resolvedTheme() === e.id ? `<button class="tbtn egg-btn" type="button" disabled>${ic('check')}In use</button>` : `<button class="tbtn egg-btn" type="button" data-theme-id="${e.id}">Use</button>`;
+    return `<div class="opt-row egg-row"><span><b>${ic('sparkles')}${esc(e.name)}</b><small>${esc(e.note)}</small></span>${ctl}</div>`;
+  };
+  return `<div class="set-group"><span class="label">Codes</span>
+      <form class="code-form" data-code-form autocomplete="off">
+        <input name="code" placeholder="Enter a secret code" maxlength="40" spellcheck="false" autocapitalize="characters" aria-label="Secret code">
+        <button class="tbtn" type="submit">Redeem</button>
+      </form>
+      <p class="set-note">${found.length ? `${found.length} of ${EGGS.length} secrets found.` : `There are ${EGGS.length} secrets hidden in here. Find a code to unlock one.`} Unlocked secrets stay unlocked on this device.</p>
+      ${found.map(row).join('')}
+    </div>`;
+}
+
+/* ---------- cheat engine (secret: unlocked with a code in Settings > Codes) ----------
+   Games run in an iframe from this same site, so the page can reach inside them:
+   - Speed: slows down or speeds up the game's clock (performance.now, Date.now, requestAnimationFrame, timers).
+   - Memory: Cheat Engine-style scanner for WebAssembly games (Unity, Godot, and other engines compiled to wasm).
+     First scan for a number you can see, change it in the game, scan again, then edit or freeze what's left.
+   - Variables: the same idea for plain JavaScript games (GameMaker, Phaser, PICO-8 wrappers, …), by walking the
+     game's global objects. Hit-or-miss: many games keep their numbers where it can't see them.
+   - Save data: edit the game's saved values in browser storage (games share this site's storage).
+   - Emulator: Game Genie / Action Replay / GameShark codes and fast-forward for emulated retro games (EmulatorJS).
+   Nothing here can change games whose data lives on someone else's server, or games that load from another website. */
+const CHEAT = {
+  open: false, tab: 'speed', speed: 1,
+  scan: null,          // { kind: 'mem'|'var', type, hits: Uint32Array | Array, prev, count }
+  frozen: new Map(),   // key -> { set(), label }
+  saveSnap: null,      // localStorage values when the game started, to mark what the game changed
+  cheats: [],          // emulator codes: { code, desc, on }
+  busy: false, timer: 0
+};
+const cheatsOn = () => hasEgg('cheats') && settings.cheats !== false;
+const SITE_KEY = k => /^(sig|gs):/.test(k);
+
+// The game's window (and any same-site frames inside it). Throws away frames from other websites.
+function gameWindows() {
+  const f = $('#stageFrame iframe'); if (!f) return [];
+  const out = [];
+  const walk = (w, depth) => {
+    try { void w.document; } catch (e) { return; }
+    out.push(w);
+    if (depth < 3) for (let i = 0; i < w.frames.length; i++) walk(w.frames[i], depth + 1);
+  };
+  try { walk(f.contentWindow, 0); } catch (e) {}
+  return out;
+}
+function blockedFrames() {
+  let n = 0;
+  const f = $('#stageFrame iframe'); if (!f) return 0;
+  try { const w = f.contentWindow; for (let i = 0; i < w.frames.length; i++) { try { void w.frames[i].document; } catch (e) { n++; } } } catch (e) { n++; }
+  return n;
+}
+
+// Hooks put into each game window as early as possible: a controllable clock and WebAssembly memory capture.
+function hookGameWindow(w) {
+  if (w.__sigHooked) return;
+  try {
+    const f = $('#stageFrame iframe');
+    if (f && f.contentWindow === w) w.addEventListener('mousemove', e => {
+      const r = f.getBoundingClientRect(); cheatTabMouse(r.left + e.clientX, r.top + e.clientY);
+    }, { passive: true });
+  } catch (e) {}
+  try {
+    w.__sigHooked = true;
+    const P = w.performance, rn = P.now.bind(P), dn = w.Date.now.bind(w.Date);
+    const st = { speed: CHEAT.speed, rb: rn(), vb: rn(), drb: dn(), dvb: dn() };
+    const vnow = () => st.vb + (rn() - st.rb) * st.speed;
+    const vdate = () => st.dvb + (dn() - st.drb) * st.speed;
+    P.now = vnow; w.Date.now = vdate;
+    const raf = w.requestAnimationFrame.bind(w), sto = w.setTimeout.bind(w), sin = w.setInterval.bind(w);
+    w.requestAnimationFrame = cb => raf(() => cb(vnow()));
+    w.setTimeout = (fn, d, ...a) => sto(fn, (+d || 0) / st.speed, ...a);
+    w.setInterval = (fn, d, ...a) => sin(fn, (+d || 0) / st.speed, ...a);
+    w.__sigSpeed = s => { const r = rn(), v = vnow(), dr = dn(), dv = vdate(); Object.assign(st, { rb: r, vb: v, drb: dr, dvb: dv, speed: s }); };
+  } catch (e) {}
+  try {
+    const WA = w.WebAssembly; if (!WA || WA.__sig) return;
+    const mems = w.__sigMem = w.__sigMem || [], OM = WA.Memory;
+    const grab = r => { try { const ex = (r.instance || r).exports || {}; for (const k in ex) if (ex[k] instanceof OM) mems.push(ex[k]); } catch (e) {} return r; };
+    WA.Memory = function (d) { const m = new OM(d); mems.push(m); return m; }; WA.Memory.prototype = OM.prototype;
+    const oi = WA.instantiate; WA.instantiate = function () { return oi.apply(this, arguments).then(grab); };
+    if (WA.instantiateStreaming) { const os = WA.instantiateStreaming; WA.instantiateStreaming = function () { return os.apply(this, arguments).then(grab); }; }
+    const OI = WA.Instance; WA.Instance = function (m, i) { const r = new OI(m, i); grab(r); return r; }; WA.Instance.prototype = OI.prototype;
+    WA.__sig = 1;
+  } catch (e) {}
+}
+// Called when a game starts or restarts: forget the last game's cheats and hook the new frame early
+// (it gets a new window when the game page loads, so keep checking).
+function watchGameFrame() {
+  CHEAT.scan = null; CHEAT.frozen.clear(); CHEAT.cheats = []; CHEAT.speed = 1;
+  CHEAT.saveSnap = snapshotSaves();
+  clearInterval(CHEAT.timer); CHEAT.timer = 0;
+  if (cheatsOn()) ensureCheatTimer(true);
+  if (CHEAT.open) renderCheatPanel();
+}
+function ensureCheatTimer(fast) {
+  if (CHEAT.timer && !fast) return;
+  clearInterval(CHEAT.timer);
+  let n = 0;
+  const run = () => { for (const w of gameWindows()) hookGameWindow(w); applyFrozen(); };
+  CHEAT.timer = setInterval(() => {
+    if (!player.g) { clearInterval(CHEAT.timer); CHEAT.timer = 0; return; }
+    run();
+    if (fast && ++n > 400) { clearInterval(CHEAT.timer); CHEAT.timer = setInterval(() => { if (player.g) run(); }, 100); }
+  }, fast ? 25 : 100);
+}
+function setGameSpeed(s) {
+  CHEAT.speed = s;
+  for (const w of gameWindows()) { hookGameWindow(w); try { w.__sigSpeed && w.__sigSpeed(s); } catch (e) {} }
+  const emu = findEmulator();
+  if (emu) try {
+    const gm = emu.gameManager;
+    if (s > 1 && gm.setFastForwardRatio) { gm.setFastForwardRatio(s); gm.toggleFastForward(1); gm.toggleSlowMotion && gm.toggleSlowMotion(0); }
+    else if (s < 1 && gm.setSlowMotionRatio) { gm.setSlowMotionRatio(1 / s); gm.toggleSlowMotion(1); gm.toggleFastForward && gm.toggleFastForward(0); }
+    else { gm.toggleFastForward && gm.toggleFastForward(0); gm.toggleSlowMotion && gm.toggleSlowMotion(0); }
+  } catch (e) {}
+}
+
+// What the game is made of, for the panel header and to pick the default tab.
+function findEmulator() { for (const w of gameWindows()) { try { if (w.EJS_emulator && w.EJS_emulator.gameManager) return w.EJS_emulator; } catch (e) {} } return null; }
+function findMemory() {
+  const bufs = new Set();
+  // (The game's buffers come from its own window, so instanceof checks against ours would fail.)
+  const add = x => { try { const b = x && x.buffer, t = b && Object.prototype.toString.call(b); if ((t === '[object ArrayBuffer]' || t === '[object SharedArrayBuffer]') && b.byteLength > 1 << 20) bufs.add(b); } catch (e) {} };
+  for (const w of gameWindows()) {
+    try { (w.__sigMem || []).forEach(add); } catch (e) {}
+    for (const n of ['Module', 'unityInstance', 'gameInstance', 'myGameInstance', 'engine', 'instance', 'game', 'wasmMemory', 'HEAPU8']) {
+      let o; try { o = w.eval(`typeof ${n} !== 'undefined' ? ${n} : undefined`); } catch (e) { continue; }
+      if (!o) continue;
+      add(o); add(o.HEAPU8); add(o.wasmMemory);
+      try { add(o.Module && o.Module.HEAPU8); add(o.rtenv && o.rtenv.HEAPU8); add(o.asm && o.asm.memory); add(o.Module && o.Module.asm && o.Module.asm.memory); } catch (e) {}
+    }
+  }
+  return [...bufs].sort((a, b) => b.byteLength - a.byteLength)[0] || null;
+}
+function detectEngine() {
+  const ws = gameWindows(); if (!ws.length) return blockedFrames() ? 'blocked' : 'none';
+  if (findEmulator()) return 'emulator';
+  for (const w of ws) {
+    try {
+      if (w.createUnityInstance || w.UnityLoader || w.document.querySelector('#unity-canvas,#unityContainer,#gameContainer')) return 'unity';
+      if (w.RufflePlayer || w.document.querySelector('ruffle-player,ruffle-embed')) return 'flash';
+      if (w.Engine && w.document.querySelector('#canvas') && findMemory()) return 'godot';
+    } catch (e) {}
+  }
+  if (findMemory()) return 'wasm';
+  if (blockedFrames() && ws.length === 1 && ws[0].document.body && ws[0].document.body.children.length <= 3) return 'blocked';
+  return 'js';
+}
+const ENGINE_NAMES = { unity: 'Unity game', godot: 'Godot game', wasm: 'WebAssembly game', flash: 'Flash game (Ruffle)', emulator: 'Emulated retro game', js: 'JavaScript game', blocked: 'Loads from another website', none: 'Game not started' };
+
+/* --- memory scanner --- */
+const MEM_TYPES = {
+  i32: { name: '4-byte number', bytes: 4, arr: Int32Array }, f32: { name: 'Decimal (float)', bytes: 4, arr: Float32Array },
+  f64: { name: 'Decimal (double)', bytes: 8, arr: Float64Array }, i16: { name: '2-byte number', bytes: 2, arr: Int16Array },
+  u8: { name: '1-byte number', bytes: 1, arr: Uint8Array }
+};
+const MAX_HITS = 5e6;
+const near = (type, v, x) => type[0] === 'f' ? (Number.isInteger(x) ? Math.abs(v - x) < 0.5 : Math.abs(v - x) < 1e-3) : v === x;
+const tick = () => new Promise(r => setTimeout(r, 0));
+async function memFirstScan(type, x, progress) {
+  const buf = findMemory(); if (!buf) throw new Error('No game memory found yet. Wait for the game to finish loading.');
+  const T = MEM_TYPES[type], view = new T.arr(buf), n = view.length;
+  let hits = new Uint32Array(1 << 16), c = 0;
+  const CH = 1 << 22;
+  for (let s = 0; s < n; s += CH) {
+    const e = Math.min(n, s + CH);
+    if (type[0] === 'f') { for (let i = s; i < e; i++) { const v = view[i]; if (v === v && near(type, v, x)) { if (c === hits.length) { const h = new Uint32Array(c * 2); h.set(hits); hits = h; } hits[c++] = i; if (c >= MAX_HITS) break; } } }
+    else { for (let i = s; i < e; i++) if (view[i] === x) { if (c === hits.length) { const h = new Uint32Array(c * 2); h.set(hits); hits = h; } hits[c++] = i; if (c >= MAX_HITS) break; } }
+    if (c >= MAX_HITS) break;
+    progress(e / n); await tick();
+  }
+  hits = hits.slice(0, c);
+  const prev = new T.arr(c); for (let i = 0; i < c; i++) prev[i] = view[hits[i]];
+  return { kind: 'mem', type, hits, prev, count: c, capped: c >= MAX_HITS, mb: Math.round(buf.byteLength / 1048576) };
+}
+async function memNextScan(scan, mode, x, progress) {
+  const buf = findMemory(); if (!buf) throw new Error('The game memory is gone. Did the game reload?');
+  const T = MEM_TYPES[scan.type], view = new T.arr(buf), { hits, prev } = scan;
+  const keep = new Uint32Array(scan.count), nprev = new T.arr(scan.count); let c = 0;
+  for (let j = 0; j < scan.count; j++) {
+    const i = hits[j]; if (i >= view.length) continue;
+    const v = view[i], p = prev[j];
+    const ok = mode === 'exact' ? near(scan.type, v, x) : mode === 'up' ? v > p : mode === 'down' ? v < p : mode === 'changed' ? v !== p : v === p;
+    if (ok) { keep[c] = i; nprev[c] = v; c++; }
+    if ((j & 0x3fffff) === 0x3fffff) { progress(j / scan.count); await tick(); }
+  }
+  return Object.assign({}, scan, { hits: keep.slice(0, c), prev: nprev.slice(0, c), count: c, capped: false });
+}
+function memRead(type, i) { const b = findMemory(); if (!b) return NaN; const v = new MEM_TYPES[type].arr(b); return i < v.length ? v[i] : NaN; }
+function memWrite(type, i, x) { const b = findMemory(); if (!b) return; const v = new MEM_TYPES[type].arr(b); if (i < v.length) v[i] = x; }
+
+/* --- JavaScript variable search --- */
+const VAR_SKIP = new Set(['window', 'self', 'top', 'parent', 'frames', 'opener', 'globalThis', 'document', 'location', 'navigator', 'history', 'screen', 'performance', 'localStorage', 'sessionStorage', 'indexedDB', 'caches', 'crypto', 'console', 'WebAssembly', 'customElements', 'visualViewport', 'speechSynthesis', 'external', 'clientInformation', 'chrome', 'trustedTypes', 'cookieStore', 'scheduler', 'navigation', '__sigMem', '__sigSpeed', '__sigHooked']);
+async function varFirstScan(x, progress) {
+  const ws = gameWindows(); if (!ws.length) throw new Error('Start the game first.');
+  const hits = [], seen = new WeakSet(); let nodes = 0;
+  const queue = [];
+  for (const w of ws) {
+    let keys = []; try { keys = Object.keys(w); } catch (e) {}
+    for (const k of keys) if (!VAR_SKIP.has(k) && !(k in window) && !k.startsWith('on')) queue.push([w, k, k, 0]);
+  }
+  while (queue.length && nodes < 400000) {
+    const [o, k, path, depth] = queue.shift(); nodes++;
+    let v; try { v = o[k]; } catch (e) { continue; }
+    if (typeof v === 'number') { if (v === x || (!Number.isInteger(v) && Math.abs(v - x) < 0.5)) hits.push({ o, k, path, prev: v }); continue; }
+    if (!v || typeof v !== 'object' || depth >= 6 || seen.has(v)) continue;
+    seen.add(v);
+    try { if (v.nodeType || v.window === v || ArrayBuffer.isView(v) || /ArrayBuffer\]$/.test(Object.prototype.toString.call(v))) continue; } catch (e) { continue; }
+    let ks; try { ks = Array.isArray(v) ? (v.length > 5000 ? [] : Object.keys(v)) : Object.keys(v); } catch (e) { continue; }
+    for (const kk of ks.slice(0, 2000)) if (!VAR_SKIP.has(kk)) queue.push([v, kk, Array.isArray(v) ? `${path}[${kk}]` : `${path}.${kk}`, depth + 1]);
+    if ((nodes & 16383) === 0) { progress(Math.min(.95, nodes / 400000)); await tick(); }
+  }
+  return { kind: 'var', type: 'var', hits, count: hits.length, capped: nodes >= 400000 };
+}
+function varNextScan(scan, mode, x) {
+  const hits = [];
+  for (const h of scan.hits) {
+    let v; try { v = h.o[h.k]; } catch (e) { continue; }
+    if (typeof v !== 'number') continue;
+    const p = h.prev;
+    const ok = mode === 'exact' ? (v === x || (!Number.isInteger(v) && Math.abs(v - x) < 0.5)) : mode === 'up' ? v > p : mode === 'down' ? v < p : mode === 'changed' ? v !== p : v === p;
+    if (ok) hits.push(Object.assign({}, h, { prev: v }));
+  }
+  return Object.assign({}, scan, { hits, count: hits.length, capped: false });
+}
+
+/* --- freezing --- */
+function applyFrozen() { for (const f of CHEAT.frozen.values()) try { f.set(); } catch (e) {} }
+function hitKey(scan, j) { return scan.kind === 'mem' ? `m:${scan.type}:${scan.hits[j]}` : `v:${scan.hits[j].path}`; }
+function hitRead(scan, j) { if (scan.kind === 'mem') return memRead(scan.type, scan.hits[j]); try { return scan.hits[j].o[scan.hits[j].k]; } catch (e) { return NaN; } }
+function hitWrite(scan, j, x) { if (scan.kind === 'mem') memWrite(scan.type, scan.hits[j], x); else try { scan.hits[j].o[scan.hits[j].k] = x; } catch (e) {} }
+function hitLabel(scan, j) { return scan.kind === 'mem' ? '0x' + (scan.hits[j] * MEM_TYPES[scan.type].bytes).toString(16).toUpperCase().padStart(8, '0') : scan.hits[j].path; }
+
+/* --- save data --- */
+function snapshotSaves() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!SITE_KEY(k)) o[k] = localStorage.getItem(k); } } catch (e) {} return o; }
+
+
+/* The Cheats tab: a little tab tucked behind the left edge of the game cabinet. It peeks out further the closer
+   the mouse gets, and opens the Cheats menu beside the game when clicked. In full window it hangs off the
+   left edge of the screen instead. */
+const CTAB = { side: 'cab', ax: 0, ay: 0, mx: -1e4, my: -1e4, raf: 0, show: false };
+function cheatTabEl() {
+  let el = $('#ctab');
+  if (!el) {
+    document.body.insertAdjacentHTML('beforeend', `<div class="ctab" id="ctab" hidden><button class="ctab-btn" type="button" title="Cheats" aria-label="Cheats">${ic('zap')}</button></div>`);
+    el = $('#ctab');
+    el.querySelector('button').onclick = () => toggleCheatPanel();
+  }
+  return el;
+}
+function layoutCheatTab() {
+  const el = cheatTabEl();
+  const mode = player.g ? player.mode : 'off';
+  let show = cheatsOn() && (mode === 'docked' || mode === 'expanded');
+  if (show && mode === 'docked') {
+    const cab = $('.cabinet'); if (!cab) show = false;
+    else {
+      const r = cab.getBoundingClientRect();
+      if (r.bottom < 90 || r.top > innerHeight - 40) show = false;
+      CTAB.ay = Math.max(r.top + 16, 8); CTAB.cabTop = r.top; CTAB.cabH = r.height;
+      if (r.left > 70) { CTAB.side = 'cab'; CTAB.ax = r.left; } else { CTAB.side = 'edge'; CTAB.ax = 0; }
+    }
+  } else if (show) { CTAB.side = 'edge'; CTAB.ax = 0; CTAB.ay = 76; CTAB.cabTop = 60; CTAB.cabH = innerHeight - 80; }
+  if (!show && CHEAT.open && mode !== 'docked' && mode !== 'expanded') toggleCheatPanel(false);
+  CTAB.show = show; el.hidden = !show;
+  if (!show) return;
+  el.dataset.side = CTAB.side;
+  el.style.top = CTAB.ay + 'px';
+  el.style.left = CTAB.side === 'cab' ? (CTAB.ax - 60) + 'px' : '0px';
+  el.classList.toggle('open', CHEAT.open);
+  placeCheatPanel(); updateCheatPeek();
+}
+// The menu goes in the empty space left of the game when there's room; otherwise it slides over the page.
+function placeCheatPanel() {
+  const p = $('#cheatPanel'); if (!p) return;
+  const w = Math.min(400, innerWidth - 24);
+  const room = CTAB.side === 'cab' && CTAB.ax - 24 >= 240;
+  const pw = room ? Math.min(w, CTAB.ax - 24) : w;
+  const top = Math.max(room ? CTAB.cabTop : CTAB.ay + 56, 70);
+  p.dataset.side = room ? 'cab' : 'edge';
+  Object.assign(p.style, { width: pw + 'px', top: top + 'px', left: (room ? CTAB.ax - 12 - pw : 12) + 'px',
+    maxHeight: Math.max(240, Math.min(innerHeight - top - 12, room ? Math.max(CTAB.cabH, 420) : innerHeight)) + 'px' });
+}
+function updateCheatPeek() {
+  if (!CTAB.show) return;
+  const el = $('#ctab');
+  const d = Math.hypot(CTAB.mx - CTAB.ax, CTAB.my - (CTAB.ay + 22));
+  const peek = CHEAT.open ? 1 : Math.max(0, Math.min(1, (280 - d) / 230));
+  el.style.setProperty('--peek', peek.toFixed(3));
+  el.classList.toggle('near', peek > .75);
+}
+function cheatTabMouse(x, y) {
+  CTAB.mx = x; CTAB.my = y;
+  if (!CTAB.raf) CTAB.raf = requestAnimationFrame(() => { CTAB.raf = 0; updateCheatPeek(); });
+}
+addEventListener('mousemove', e => cheatTabMouse(e.clientX, e.clientY), { passive: true });
+addEventListener('scroll', () => { if (CTAB.show || CHEAT.open) layoutCheatTab(); }, { passive: true });
+addEventListener('resize', () => layoutCheatTab());
+setInterval(() => { if (player.g) layoutCheatTab(); }, 500);
+
+/* --- the panel --- */
+function toggleCheatPanel(force) {
+  CHEAT.open = force ?? !CHEAT.open;
+  let p = $('#cheatPanel');
+  if (!CHEAT.open) { p?.remove(); layoutCheatTab(); return; }
+  if (!p) {
+    document.body.insertAdjacentHTML('beforeend', `<aside class="cheat-panel" id="cheatPanel" role="dialog" aria-label="Cheats"></aside>`);
+    p = $('#cheatPanel'); wireCheatPanel(p);
+  }
+  const eng = detectEngine();
+  if (!p.dataset.picked) { CHEAT.tab = eng === 'emulator' ? 'emu' : 'speed'; p.dataset.picked = 1; }
+  renderCheatPanel(); layoutCheatTab();
+}
+function renderCheatPanel() {
+  const p = $('#cheatPanel'); if (!p) return;
+  const eng = detectEngine(), mem = findMemory();
+  CHEAT.eng = eng + (mem ? '+mem' : '');
+  const tabs = [['speed', 'Speed'], ['scan', 'Scanner'], ['save', 'Save data'], ['emu', 'Emulator']];
+  const s = CHEAT.scan;
+  let body = '';
+  if (!player.g) body = `<p class="ch-note">Start a game, then open this again.</p>`;
+  else if (eng === 'blocked') body = `<p class="ch-note">This game loads from another website, so cheats can’t reach inside it. Save data and speed may still work for parts of it.</p>`;
+  if (player.g && CHEAT.tab === 'speed') {
+    const sp = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+    body += `<p class="ch-note">Changes how fast the game’s clock runs. Works on most web games; music may not change speed.</p>
+      <div class="ch-speeds">${sp.map(v => `<button class="ch-chip${CHEAT.speed === v ? ' on' : ''}" data-speed="${v}">${v}×</button>`).join('')}</div>
+      <label class="ch-range"><span>Custom <output>${CHEAT.speed}×</output></span><input type="range" min="0.1" max="8" step="0.05" value="${CHEAT.speed}" data-speed-range></label>`;
+  }
+  if (player.g && CHEAT.tab === 'scan') {
+    const useMem = !!mem;
+    const kind = s ? s.kind : useMem ? 'mem' : 'var';
+    body += `<p class="ch-note">${useMem ? `Scanning the game’s memory (${Math.round(mem.byteLength / 1048576)} MB).` : 'This game has no WebAssembly memory, so this searches its JavaScript variables instead (hit-or-miss).'}
+      Type a number you can see in the game (coins, health…) and press <b>First scan</b>. Change it in the game, type the new number, press <b>Next scan</b>. Repeat until only a few are left.</p>
+      <div class="ch-row">
+        <input class="ch-in" type="number" step="any" placeholder="Value" data-scan-val>
+        ${kind === 'mem' ? `<select class="ch-in ch-sel" data-scan-type ${s ? 'disabled' : ''}>${Object.entries(MEM_TYPES).map(([k, t]) => `<option value="${k}" ${(s ? s.type : 'i32') === k ? 'selected' : ''}>${t.name}</option>`).join('')}</select>` : ''}
+      </div>
+      <div class="ch-row">
+        <button class="tbtn ch-go" data-scan="first">${s ? 'New scan' : 'First scan'}</button>
+        ${s ? `<select class="ch-in ch-sel" data-scan-mode><option value="exact">Exact value</option><option value="up">Went up</option><option value="down">Went down</option><option value="changed">Changed</option><option value="same">Didn’t change</option></select>
+        <button class="tbtn ch-go" data-scan="next">Next scan</button>` : ''}
+      </div>
+      <div class="ch-status" id="chStatus">${s ? `${s.count.toLocaleString()} found${s.capped ? ' (stopped early, too many: try a less common number)' : ''}` : ''}</div>
+      ${s && s.count && s.count <= 200 ? `<div class="ch-hits">${Array.from({ length: s.count }, (_, j) => {
+        const key = hitKey(s, j), fr = CHEAT.frozen.has(key);
+        return `<div class="ch-hit" data-j="${j}"><code title="${esc(hitLabel(s, j))}">${esc(hitLabel(s, j))}</code><span class="ch-cur" data-cur="${j}">${esc(String(hitRead(s, j)))}</span>
+          <input class="ch-in ch-set" type="number" step="any" placeholder="New" data-set-val="${j}"><button class="tbtn" data-set="${j}">Set</button>
+          <label class="ch-freeze" title="Keep it at this value"><input type="checkbox" data-freeze="${j}" ${fr ? 'checked' : ''}>Freeze</label></div>`;
+      }).join('')}</div>` : s && s.count > 200 ? `<p class="ch-note">Too many to list. Change the value in the game and do a Next scan.</p>` : ''}`;
+  }
+  if (player.g && CHEAT.tab === 'save') {
+    const snap = CHEAT.saveSnap || {}, keys = [];
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!SITE_KEY(k)) keys.push(k); } } catch (e) {}
+    keys.sort((a, b) => ((snap[b] === undefined || snap[b] !== localStorage.getItem(b)) - (snap[a] === undefined || snap[a] !== localStorage.getItem(a))) || a.localeCompare(b));
+    body += `<p class="ch-note">Games save here. Keys marked <b>changed</b> were written since this game started. Edit a value, press Save, then restart the game. (Unity and Godot games often save somewhere this can’t edit.)</p>
+      <div class="ch-row"><input class="ch-in" placeholder="Filter keys" data-save-filter></div>
+      <div class="ch-saves">${keys.length ? keys.map(k => {
+        const v = localStorage.getItem(k) || '', changed = snap[k] === undefined || snap[k] !== v;
+        return `<details class="ch-save" data-key="${esc(k)}"><summary><code>${esc(k)}</code>${changed ? '<em>changed</em>' : ''}<small>${v.length.toLocaleString()} chars</small></summary>
+          <textarea class="ch-in" rows="5" spellcheck="false">${esc(v.length > 200000 ? v.slice(0, 200000) : v)}</textarea>
+          <div class="ch-row">${v.length > 200000 ? '<small>Too big to edit here.</small>' : `<button class="tbtn" data-save-put>Save</button>`}<button class="tbtn" data-save-del>Delete</button></div></details>`;
+      }).join('') : '<p class="ch-note">No saved game data yet.</p>'}</div>
+      <div class="ch-row"><button class="tbtn" data-restart>${ic('restart')}Restart game</button></div>`;
+  }
+  if (player.g && CHEAT.tab === 'emu') {
+    const emu = findEmulator();
+    body += emu ? `<p class="ch-note">Enter cheat codes for this console: Game Genie (NES, SNES, Genesis, Game Boy), Pro Action Replay (SNES), GameShark / Action Replay (GBA, N64, PS1). One code per box.</p>
+      <div class="ch-row"><input class="ch-in" placeholder="Code, e.g. SXIOPO" data-emu-code spellcheck="false"><input class="ch-in" placeholder="What it does (optional)" data-emu-desc></div>
+      <div class="ch-row"><button class="tbtn ch-go" data-emu-add>Add code</button></div>
+      <div class="ch-hits">${CHEAT.cheats.map((c, i) => `<div class="ch-hit ch-code"><code>${esc(c.code)}</code><span>${esc(c.desc || '')}</span>
+        <label class="ch-freeze"><input type="checkbox" data-emu-on="${i}" ${c.on ? 'checked' : ''}>On</label><button class="tbtn" data-emu-del="${i}">Remove</button></div>`).join('')}</div>`
+      : `<p class="ch-note">${eng === 'none' ? 'Start the game first (press its Play button).' : 'This isn’t an emulated retro game. Use Speed, Scanner or Save data.'}</p>`;
+  }
+  p.innerHTML = `<div class="ch-head"><b>${ic('zap')}Cheats</b><span class="ch-eng">${esc(ENGINE_NAMES[eng] || '')}</span><button class="tbtn icon-only" data-ch-close title="Close">${ic('close')}</button></div>
+    <div class="ch-tabs">${tabs.map(([k, n]) => `<button class="${CHEAT.tab === k ? 'on' : ''}" data-ch-tab="${k}">${n}</button>`).join('')}</div>
+    <div class="ch-body">${body}</div>
+    ${CHEAT.frozen.size ? `<div class="ch-foot">${CHEAT.frozen.size} frozen value${CHEAT.frozen.size === 1 ? '' : 's'} <button class="tbtn" data-unfreeze>Unfreeze all</button></div>` : ''}`;
+}
+function applyEmuCheats() {
+  const emu = findEmulator(); if (!emu) return;
+  const gm = emu.gameManager;
+  try { gm.resetCheat && gm.resetCheat(); CHEAT.cheats.forEach((c, i) => gm.setCheat(i, c.on ? 1 : 0, c.code)); } catch (e) { toast('This emulator didn’t accept the code'); }
+}
+function wireCheatPanel(p) {
+  const status = t => { const el = $('#chStatus'); if (el) el.textContent = t; };
+  p.addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b || CHEAT.busy) return;
+    const d = b.dataset;
+    if ('chClose' in d) return toggleCheatPanel(false);
+    if (d.chTab) { CHEAT.tab = d.chTab; return renderCheatPanel(); }
+    if (d.speed) { setGameSpeed(+d.speed); toast(`Game speed ${d.speed}×`); return renderCheatPanel(); }
+    if ('unfreeze' in d) { CHEAT.frozen.clear(); return renderCheatPanel(); }
+    if ('restart' in d) { const f = $('#stageFrame iframe'); if (f) { f.src = f.src; watchGameFrame(); toast('Restarting the game'); } return renderCheatPanel(); }
+    if (d.scan) {
+      const raw = $('[data-scan-val]', p).value.trim(), x = raw === '' ? NaN : +raw;
+      const mode = d.scan === 'next' ? $('[data-scan-mode]', p).value : 'exact';
+      if (mode === 'exact' && !isFinite(x)) return toast('Type the number you see in the game');
+      CHEAT.busy = true; b.disabled = true; status('Scanning…');
+      try {
+        const prog = f => status(`Scanning… ${Math.round(f * 100)}%`);
+        if (d.scan === 'first') {
+          const type = $('[data-scan-type]', p)?.value || 'i32';
+          CHEAT.scan = findMemory() ? await memFirstScan(type, x, prog) : await varFirstScan(x, prog);
+        } else CHEAT.scan = CHEAT.scan.kind === 'mem' ? await memNextScan(CHEAT.scan, mode, x, prog) : varNextScan(CHEAT.scan, mode, x);
+      } catch (err) { toast(err.message || 'Scan failed'); }
+      CHEAT.busy = false; renderCheatPanel();
+      const v = $('[data-scan-val]', p); if (v) { v.value = raw; v.focus(); }
+      return;
+    }
+    if (d.set) {
+      const s = CHEAT.scan, j = +d.set, x = +$(`[data-set-val="${j}"]`, p).value;
+      if (!s || !isFinite(x)) return toast('Type a new value first');
+      hitWrite(s, j, x);
+      const key = hitKey(s, j); if (CHEAT.frozen.has(key)) CHEAT.frozen.set(key, { set: () => hitWrite(s, j, x) });
+      toast('Value changed'); return renderCheatPanel();
+    }
+    if ('savePut' in d || 'saveDel' in d) {
+      const box = b.closest('[data-key]'), k = box.dataset.key;
+      try { if ('saveDel' in d) localStorage.removeItem(k); else localStorage.setItem(k, $('textarea', box).value); } catch (err) { return toast('Couldn’t save that'); }
+      toast('saveDel' in d ? 'Deleted. Restart the game to see it.' : 'Saved. Restart the game to see it.'); return renderCheatPanel();
+    }
+    if ('emuAdd' in d) {
+      const code = $('[data-emu-code]', p).value.trim(), desc = $('[data-emu-desc]', p).value.trim();
+      if (!code) return toast('Type a cheat code first');
+      CHEAT.cheats.push({ code, desc, on: true }); applyEmuCheats(); toast('Code added'); return renderCheatPanel();
+    }
+    if (d.emuDel) { CHEAT.cheats.splice(+d.emuDel, 1); applyEmuCheats(); return renderCheatPanel(); }
+  });
+  p.addEventListener('change', e => {
+    const el = e.target;
+    if (el.dataset.freeze !== undefined) {
+      const s = CHEAT.scan, j = +el.dataset.freeze, key = hitKey(s, j);
+      if (el.checked) { const x = hitRead(s, j); CHEAT.frozen.set(key, { set: () => hitWrite(s, j, x) }); ensureCheatTimer(); }
+      else CHEAT.frozen.delete(key);
+      renderCheatPanel();
+    } else if (el.dataset.emuOn !== undefined) { CHEAT.cheats[+el.dataset.emuOn].on = el.checked; applyEmuCheats(); }
+  });
+  p.addEventListener('input', e => {
+    const el = e.target;
+    if (el.dataset.speedRange !== undefined) { const v = Math.round(+el.value * 100) / 100; setGameSpeed(v); el.previousElementSibling.querySelector('output').textContent = v + '×'; p.querySelectorAll('[data-speed]').forEach(c => c.classList.toggle('on', +c.dataset.speed === v)); }
+    else if (el.dataset.saveFilter !== undefined) { const q = el.value.toLowerCase(); p.querySelectorAll('.ch-save').forEach(x => { x.hidden = !x.dataset.key.toLowerCase().includes(q); }); }
+  });
+  p.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.scanVal !== undefined) { e.preventDefault(); p.querySelector(CHEAT.scan ? '[data-scan="next"]' : '[data-scan="first"]')?.click(); } e.stopPropagation(); });
+  // Keep the current values fresh while the scanner is open.
+  // Also redraw when the game finishes loading and turns out to be a different kind (e.g. its memory appears).
+  setInterval(() => {
+    if (!CHEAT.open || !document.body.contains(p)) return;
+    const eng = detectEngine() + (findMemory() ? '+mem' : '');
+    const typing = p.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+    if (eng !== CHEAT.eng && !typing && !CHEAT.busy) renderCheatPanel();
+    if (CHEAT.tab === 'scan' && CHEAT.scan) p.querySelectorAll('[data-cur]').forEach(el => { el.textContent = String(hitRead(CHEAT.scan, +el.dataset.cur)); });
+  }, 700);
+}
+
 /* ---------- theme store ---------- */
 function pageStore() {
   setTitle(`Theme Store · ${BRAND}`);
   const list = THEMES.filter(t => t.c);
-  const mine = list.filter(t => t.mine), shop = list.filter(t => t.store && !t.mine), included = list.filter(t => !t.store);
-  const owned = list.filter(t => ownsTheme(t.id)).length;
+  const mine = list.filter(t => t.mine), shop = list.filter(t => t.store && !t.mine), included = list.filter(t => !t.store && !t.secret);
+  const secrets = list.filter(t => t.secret && ownsTheme(t.id));
+  const owned = list.filter(t => !t.secret && ownsTheme(t.id)).length;
+  const total = list.filter(t => !t.secret).length;
   const button = t => {
     if (resolvedTheme() === t.id && settings.theme !== 'system') return `<button class="ts-btn in-use" disabled>${ic('check')}In use</button>`;
     if (ownsTheme(t.id)) return `<button class="ts-btn use" data-use="${t.id}">Use</button>`;
     return `<button class="ts-btn get" data-get="${t.id}">${ic('bag')}Get</button>`;
   };
-  const price = t => t.mine ? 'Yours' : !t.store ? 'Included' : ownsTheme(t.id) ? 'Owned' : (t.price ? `<s>${esc(t.price)}</s> ${STORE_PRICE}` : STORE_PRICE);
+  const price = t => t.secret ? 'Secret' : t.mine ? 'Yours' : !t.store ? 'Included' : ownsTheme(t.id) ? 'Owned' : (t.price ? `<s>${esc(t.price)}</s> ${STORE_PRICE}` : STORE_PRICE);
   const card = t => {
     const im = t.spec?.images || {};
     let games = im.games; games = (typeof games === 'string' ? [games] : Array.isArray(games) ? games : []).filter(Boolean);
@@ -977,11 +1535,12 @@ function pageStore() {
     ${fonts.length ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fonts.map(f => 'family=' + encodeURIComponent(f).replace(/%20/g, '+')).join('&')}&display=swap">` : ''}
     <section class="banner" style="--c:#1fc7b2"><span class="badge-ico">${ic('bag')}</span>
       <div><div class="label">Every theme is free</div><h1>Theme Store</h1><p>Get a theme and it’s yours on this device. Switch any time here or in Settings.</p></div>
-      <div class="total"><b>${owned}/${list.length}</b>owned</div></section>
+      <div class="total"><b>${owned}/${total}</b>owned</div></section>
     <a class="ts-make" href="#/make"><span class="badge-ico">${ic('sparkles')}</span><span><b>Make your own theme</b><small>Pick colors, fonts and pictures (backgrounds, logos, cursors, game pictures). No code needed.</small></span>${ic('chevron')}</a>
     ${mine.length ? `<section class="block">${head('Saved in this browser', 'Made by you')}<div class="ts-grid-list">${mine.map(card).join('')}</div></section>` : ''}
     <section class="block">${head(`${shop.length} themes to collect`, 'New in the store')}
       <div class="ts-grid-list">${shop.map(card).join('')}</div></section>
+    ${secrets.length ? `<section class="block">${head('Unlocked with a code', 'Secret themes')}<div class="ts-grid-list">${secrets.map(card).join('')}</div></section>` : ''}
     <section class="block">${head('Came with the site', 'Included')}
       <div class="ts-grid-list">${included.map(card).join('')}</div></section>
     ${footer()}`;
@@ -1026,6 +1585,7 @@ function route() {
     default: pageNotFound();
   }
   window.scrollTo(0, 0);
+  requestAnimationFrame(layoutCheatTab);
 }
 
 /* ---------- search box ---------- */
@@ -1117,6 +1677,7 @@ function renderSettings() {
         ${sw('autoblank', 'Auto-open in about:blank', 'After you sign in, the site opens in an about:blank tab.')}
         <p class="set-note">This tab goes to Google afterwards. Allow pop-ups for this site if nothing opens.</p>
       </div>
+      ${codesSettingsHtml()}
       <div class="set-group"><span class="label">Your data</span>
         <div class="danger">
           <button class="tbtn" data-clear="recent">${ic('clock')}Clear recently played</button>
@@ -1124,7 +1685,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-7.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-11.</p>
       </div>
     </div>`;
 }
@@ -1143,6 +1704,7 @@ function wireSettings() {
     else if (b.dataset.sizeId) setSetting('size', b.dataset.sizeId);
     else if (b.dataset.toggle) setSetting(b.dataset.toggle, !settings[b.dataset.toggle]);
     else if ('blank' in b.dataset) return openInBlank();
+    else if (b.dataset.eggAct) runEgg(b.dataset.eggAct);
     else if (b.dataset.clear === 'recent') { recent = []; store.set('gs:recent', recent); toast('History cleared'); }
     else if (b.dataset.clear === 'favs') { favs.clear(); store.set('gs:favs', []); toast('Favorites cleared'); }
     else if (b.dataset.clear === 'settings') { Object.assign(settings, SETTINGS_DEFAULTS); store.set('sig:settings', settings); applySettings(); toast('Settings reset'); }
@@ -1151,6 +1713,20 @@ function wireSettings() {
     if (b.dataset.clear) route();
   });
   dlg.addEventListener('submit', e => {
+    const cf = e.target.closest('[data-code-form]');
+    if (cf) {
+      e.preventDefault();
+      const code = cf.elements.code.value.trim(); if (!code) return cf.elements.code.focus();
+      const r = redeemCode(code);
+      if (r === 'nope') {
+        cf.classList.add('bad'); cf.classList.remove('shake'); void cf.offsetWidth; cf.classList.add('shake');
+        cf.elements.code.select(); return toast('That code doesn’t do anything… yet');
+      }
+      const egg = EGGS.find(x => x.hash === codeHash(code));
+      toast(r === 'new' ? `Unlocked: ${egg.name}!` : `You already unlocked ${egg.name}`);
+      const y = $('.set-body', dlg).scrollTop; renderSettings(); $('.set-body', dlg).scrollTop = y;
+      return;
+    }
     const f = e.target.closest('[data-custom-form]'); if (!f) return;
     e.preventDefault();
     const title = f.elements.title.value.trim(), icon = f.elements.icon.value.trim();

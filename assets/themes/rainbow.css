@@ -1,0 +1,17 @@
+/* Theme: Rainbow. Secret theme, unlocked with a code in Settings > Codes. */
+@property --hue{syntax:"<number>";inherits:true;initial-value:0}
+:root[data-theme="rainbow"]{
+  --paper:#0c0c12;
+  --paper-2:#14141d;
+  --surface:#181822;
+  --ink:#f5f3ff;
+  --line:hsl(var(--hue) 90% 62%);
+  --shadow-c:hsl(calc(var(--hue) + 180) 80% 35%);
+  --muted:#a3a0b8;
+  --dots:hsl(var(--hue) 90% 70% / .12);
+  color-scheme:dark;
+  animation:rainbow-hue 10s linear infinite;
+}
+:root[data-theme="rainbow"][data-accent]{--accent:hsl(calc(var(--hue) + 60) 95% 62%)}
+:root[data-theme="rainbow"][data-motion="off"]{animation:none;--hue:280}
+@keyframes rainbow-hue{to{--hue:360}}

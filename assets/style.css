@@ -445,3 +445,91 @@ img.i.ti{width:20px;height:20px;object-fit:contain;flex:none;display:inline-bloc
   .mk-two{grid-template-columns:1fr}
 }
 .mk-dl-list{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ---------- codes & easter eggs ---------- */
+.code-form{display:flex;gap:8px}
+.code-form input{flex:1;min-width:0;height:42px;border:var(--bw) solid var(--line);border-radius:999px;background:var(--paper-2);color:var(--ink);padding:0 16px;font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;outline:none}
+.code-form input::placeholder{text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted)}
+.code-form input:focus{border-color:var(--accent)}
+.code-form.bad input{border-color:var(--tomato)}
+.code-form.shake{animation:code-shake .38s}
+@keyframes code-shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+.egg-row b{display:flex;align-items:center;gap:6px}
+.egg-row b svg.i,.egg-row b img.i{width:16px;height:16px;color:var(--accent)}
+.egg-btn{height:36px;padding:0 14px;font-size:13px}
+.egg-btn[disabled]{box-shadow:none;opacity:.7}
+.confetto{position:fixed;z-index:9999;width:8px;height:5px;border-radius:2px;pointer-events:none;animation:confetto .95s cubic-bezier(.2,.7,.4,1) forwards}
+@keyframes confetto{to{transform:translate(var(--dx),calc(var(--dy) + 120px)) rotate(var(--r));opacity:0}}
+canvas.snow{position:fixed;inset:0;z-index:9998;pointer-events:none}
+
+/* ---------- cheat engine panel ---------- */
+/* The play page's buttons wrap onto a second line instead of being cut off, so Cheats is always reachable. */
+.cab-top{flex-wrap:wrap}
+.cab-top>div:first-child{min-width:0}
+.cab-actions{flex-wrap:wrap;justify-content:flex-end}
+.cheat-panel{position:fixed;top:128px;left:12px;z-index:1100;width:400px;max-width:calc(100vw - 24px);max-height:calc(100vh - 150px);animation:ch-pop-left .26s cubic-bezier(.2,.9,.3,1.2);display:flex;flex-direction:column;background:var(--surface);color:var(--ink);border:var(--bw) solid var(--line);border-radius:16px;box-shadow:6px 6px 0 var(--shadow-c);overflow:hidden}
+.ch-head{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-bottom:var(--bw) solid var(--line);background:var(--accent);color:#17130f}
+.ch-head b{display:flex;align-items:center;gap:6px;font-size:17px}
+.ch-head b svg.i{width:18px;height:18px}
+.ch-eng{flex:1;font-family:var(--mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-head .tbtn.icon-only{width:34px;height:34px;background:#fff8;border-color:#17130f;box-shadow:none;color:#17130f}
+.ch-tabs{display:flex;border-bottom:1.5px solid var(--line)}
+.ch-tabs button{flex:1;padding:9px 4px;font-family:var(--mono);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:3px solid transparent}
+.ch-tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+.ch-body{padding:12px 14px 14px;overflow:auto;display:grid;gap:10px;align-content:start}
+.ch-note{margin:0;font-size:13px;line-height:1.45;color:var(--muted)}
+.ch-note b{color:var(--ink)}
+.ch-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ch-in{flex:1;min-width:0;height:38px;border:var(--bw) solid var(--line);border-radius:10px;background:var(--paper-2);color:var(--ink);padding:0 10px;font:inherit;font-size:14px;outline:none}
+.ch-in:focus{border-color:var(--accent)}
+textarea.ch-in{height:auto;padding:8px 10px;font-family:var(--mono);font-size:12px;resize:vertical;width:100%}
+.ch-sel{flex:0 1 auto;padding-right:4px}
+.ch-body .tbtn{height:36px;padding:0 14px;font-size:13px;box-shadow:2px 2px 0 var(--shadow-c)}
+.ch-go{background:var(--accent);color:#17130f;border-color:#17130f}
+.ch-speeds{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ch-chip{height:40px;border:var(--bw) solid var(--line);border-radius:10px;background:var(--paper-2);font-family:var(--mono);font-weight:700;font-size:14px}
+.ch-chip.on{background:var(--accent);color:#17130f;border-color:#17130f}
+.ch-range{display:grid;gap:4px;font-size:13px;font-weight:700}
+.ch-range output{font-family:var(--mono);color:var(--muted)}
+.ch-range input{width:100%;accent-color:var(--accent)}
+.ch-status{font-family:var(--mono);font-size:12.5px;font-weight:700;min-height:16px}
+.ch-hits{display:grid;gap:6px}
+.ch-hit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;padding:8px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-2);font-size:13px}
+.ch-hit code{font-family:var(--mono);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-cur{font-family:var(--mono);font-weight:700;text-align:right}
+.ch-hit .ch-set{height:32px}
+.ch-hit .tbtn{height:32px;padding:0 10px}
+.ch-freeze{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;cursor:pointer}
+.ch-freeze input{accent-color:var(--accent);width:16px;height:16px}
+.ch-code{grid-template-columns:auto minmax(0,1fr) auto auto}
+.ch-saves{display:grid;gap:6px}
+.ch-save{border:1.5px solid var(--line);border-radius:10px;background:var(--paper-2);padding:6px 8px}
+.ch-save summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;min-width:0}
+.ch-save summary code{font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.ch-save summary em{font-style:normal;font-family:var(--mono);font-size:10.5px;font-weight:700;text-transform:uppercase;padding:1px 6px;border-radius:5px;background:var(--accent);color:#17130f}
+.ch-save summary small{color:var(--muted);font-size:11px;white-space:nowrap}
+.ch-save[open] textarea{margin:8px 0}
+.ch-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;border-top:1.5px solid var(--line);font-size:13px;font-weight:700}
+.ch-foot .tbtn{height:32px;padding:0 12px;font-size:12.5px}
+@media (max-width:560px){.cheat-panel{top:auto!important;bottom:12px;left:12px!important;right:12px;width:auto!important;max-height:70vh!important}}
+.cheat-panel[data-side="cab"]{transform-origin:100% 0;animation-name:ch-pop-right}
+.cheat-panel[data-side="edge"]{transform-origin:0 0}
+@keyframes ch-pop-right{from{opacity:0;transform:translateX(40px) scale(.94)}}
+@keyframes ch-pop-left{from{opacity:0;transform:translateX(-40px) scale(.94)}}
+
+/* the peeking Cheats tab (see layoutCheatTab in app.js) */
+.ctab{--peek:0;position:fixed;z-index:1095;width:60px;height:48px;overflow:hidden;pointer-events:none}
+.ctab[hidden]{display:none}
+.ctab-btn{position:absolute;top:2px;width:52px;height:42px;display:grid;place-items:center;pointer-events:auto;background:var(--accent);color:#17130f;border:var(--bw) solid #17130f;
+  transition:transform .18s cubic-bezier(.2,.9,.3,1.3),box-shadow .18s;cursor:pointer}
+.ctab-btn svg.i,.ctab-btn img.i{width:21px;height:21px;transition:transform .2s}
+/* Beside the game: tucked under the cabinet's left edge, slides out to the left. */
+.ctab[data-side="cab"] .ctab-btn{right:-2px;border-right:0;border-radius:12px 0 0 12px;transform:translateX(calc((1 - var(--peek)) * 40px));box-shadow:-3px 3px 0 var(--shadow-c)}
+/* Full window / narrow screens: hangs off the left edge of the screen, slides out to the right. */
+.ctab[data-side="edge"] .ctab-btn{left:-2px;border-left:0;border-radius:0 12px 12px 0;transform:translateX(calc((1 - var(--peek)) * -40px));box-shadow:3px 3px 0 var(--shadow-c)}
+.ctab.near .ctab-btn svg.i,.ctab.near .ctab-btn img.i{animation:ctab-wiggle .9s ease-in-out infinite}
+.ctab-btn:hover{filter:brightness(1.06)}
+.ctab.open .ctab-btn{background:var(--ink);color:var(--paper)}
+@keyframes ctab-wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg) scale(1.08)}75%{transform:rotate(14deg) scale(1.08)}}
+:root[data-motion="off"] .ctab-btn,:root[data-motion="off"] .cheat-panel{transition:none;animation:none}
+:root[data-motion="off"] .ctab.near .ctab-btn svg.i{animation:none}
