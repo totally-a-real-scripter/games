@@ -8,9 +8,8 @@ There are two ways to make a theme. The easy way needs no code at all.
 2. Pick colors, fonts and pictures. The whole site shows your theme as you go.
 3. Choose what to do with it:
    - **Save & use** keeps it in your browser only (it shows up under "Made by you").
-   - **Add to the site** gives you a new `themes.json` to download, plus any pictures you picked.
-     Put `themes.json` in this folder (replace the old one), put the pictures in `images/`, then commit, push and redeploy.
-     Now it's in the Theme Store for everyone.
+   - **Download** gives you the theme file (a `themes.json` that also has the site's other themes in it), plus any pictures you uploaded.
+     To add it to the site, put `themes.json` in this folder (replace the old one), put the pictures in `images/`, then commit, push and redeploy.
 
 Every theme in the store has a **Remix** link that opens it in the Theme Maker, so you can start from one you like.
 

@@ -233,6 +233,30 @@ function openInBlank() {
 }
 const app = $('#app');
 
+/* ---------- navigation ----------
+   The current page ("#/play/tetris" etc.) is kept here instead of in the address bar, so the address bar
+   always shows just the domain. Back/forward still work through history entries with the same address. */
+let CUR = '#/';
+function nav(h, replace) {
+  h = h && h !== '#' ? h : '#/';
+  if (h === CUR && !replace) return route();
+  CUR = h;
+  try { history[replace ? 'replaceState' : 'pushState']({ sig: h }, '', location.pathname + location.search); } catch (e) {}
+  route();
+}
+// Open a game in a new tab whose address reads about:blank (so its file path never shows).
+function openGameTab(g) {
+  const w = window.open('about:blank', '_blank');
+  if (!w) return toast('Pop-up blocked. Allow pop-ups for this site and try again.');
+  const cl = store.get('sig:cloak', null), src = new URL(encPath(g.p), location.href).href;
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(cl && cl.title ? cl.title : g.t)}</title>` +
+    (cl && cl.icon ? `<link rel="icon" href="${esc(cl.icon)}">` : '') +
+    `<style>html,body{margin:0;height:100%;overflow:hidden;background:#000}iframe{display:block;border:0;width:100%;height:100%}</style></head>` +
+    `<body><iframe src="${esc(src)}" allow="fullscreen; autoplay; gamepad; clipboard-read; clipboard-write" allowfullscreen></iframe></body></html>`);
+  w.document.close();
+}
+
 /* ---------- seeded daily randomness ---------- */
 function todayKey() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
 function dayOfYear() { const d = new Date(), s = new Date(d.getFullYear(), 0, 0); return Math.floor((d - s) / 864e5); }
@@ -354,7 +378,7 @@ function tickClock() {
   el.textContent = `next drop in ${h}h ${String(m).padStart(2, '0')}m`;
 }
 let lastDay = todayKey();
-setInterval(() => { tickClock(); if (lastDay !== todayKey()) { lastDay = todayKey(); if (!location.hash || location.hash === '#/') route(); } }, 30000);
+setInterval(() => { tickClock(); if (lastDay !== todayKey()) { lastDay = todayKey(); if (CUR === '#/') route(); } }, 30000);
 
 /* ---------- list pages ---------- */
 const SORTS = [['popular', 'Top'], ['az', 'A–Z'], ['shuffle', 'Shuffle']];
@@ -453,7 +477,7 @@ function stageEl() {
     const a = b.dataset.stage;
     if (a === 'shrink') { exitFullWindow(); }
     else if (a === 'expand') { setMode('expanded'); }
-    else if (a === 'resume') { location.hash = '#/play/' + player.g.slug; }
+    else if (a === 'resume') { nav('#/play/' + player.g.slug); }
     else if (a === 'close') { closeGame(); }
   });
   new ResizeObserver(positionDock).observe(document.body);
@@ -466,9 +490,9 @@ function stageEl() {
 function exitFullWindow() {
   if (!player.g) return;
   if (onPlayPage()) setMode('docked');
-  else location.hash = '#/play/' + player.g.slug;   // the play page re-docks the running game without reloading it
+  else nav('#/play/' + player.g.slug);   // the play page re-docks the running game without reloading it
 }
-function onPlayPage() { return !!player.g && location.hash === '#/play/' + player.g.slug; }
+function onPlayPage() { return !!player.g && CUR === '#/play/' + player.g.slug; }
 function launch(g) {
   const st = stageEl();
   if (player.g !== g) {
@@ -497,7 +521,7 @@ function closeGame() {
   const st = $('#stage'); if (!st) return;
   $('#stageFrame').innerHTML = '';
   player.g = null; setMode('off');
-  if (location.hash.startsWith('#/play/')) route();
+  if (CUR.startsWith('#/play/')) route();
 }
 
 function pagePlay(slug) {
@@ -515,7 +539,7 @@ function pagePlay(slug) {
               <button class="tbtn icon-only${favs.has(slug) ? ' on' : ''}" id="favBtn" title="Favorite">${ic('heart')}</button>
               <button class="tbtn icon-only" id="reloadBtn" title="Restart">${ic('restart')}</button>
               <a class="tbtn icon-only" href="${encPath(g.p)}" download="${esc(g.t.replace(/[\\/:*?"<>|]/g, ''))}.html" title="Download game">${ic('download')}</a>
-              <a class="tbtn icon-only" href="${encPath(g.p)}" target="_blank" rel="noopener" title="Open in new tab">${ic('external')}</a>
+              <button class="tbtn icon-only" id="tabBtn" title="Open in new tab">${ic('external')}</button>
               <button class="tbtn" id="fsBtn" title="Fill the browser window">${ic('expand')}<span class="tbtn-label">Full window</span></button>
             </div>
           </div>
@@ -533,7 +557,7 @@ function pagePlay(slug) {
       <aside class="upnext"><h2>Up next</h2>${sim.slice(0, 6).map(x => `<a href="#/play/${x.slug}">${img(gi(x))}<span><b>${esc(x.t)}</b><small>${esc(platLabel(x))}</small></span></a>`).join('')}</aside>
     </div>${footer()}`;
   const start = () => {
-    if (settings.newtab) { window.open(encPath(g.p), '_blank', 'noopener'); return false; }
+    if (settings.newtab) { openGameTab(g); return false; }
     $('#insert')?.remove();
     launch(g); setMode('docked');
     return true;
@@ -544,6 +568,7 @@ function pagePlay(slug) {
   $('#reloadBtn').onclick = () => { if (player.g === g) { const f = $('#stageFrame iframe'); f.src = f.src; } else start(); };
   $('#fsBtn').onclick = () => { if (player.g === g || start()) setMode('expanded'); };
   $('#favBtn').onclick = e => { toggleFav(slug); e.currentTarget.classList.toggle('on', favs.has(slug)); };
+  $('#tabBtn').onclick = () => openGameTab(g);
   setTitle(`${g.t} · ${BRAND}`);
 }
 /* ---------- theme engine ----------
@@ -792,7 +817,7 @@ function pageMaker(fromId) {
           <textarea data-k="css" rows="6" spellcheck="false" placeholder=".card{border-style:dashed}"></textarea></details>
         <div class="mk-actions">
           <button class="tbtn mk-save" type="button" data-act="save">${ic('check')}${editingMine ? 'Save changes' : 'Save & use'}</button>
-          <button class="tbtn" type="button" data-act="share">${ic('download')}Add to the site</button>
+          <button class="tbtn" type="button" data-act="share">${ic('download')}Download</button>
           <button class="tbtn" type="button" data-act="reset">${ic('restart')}Start over</button>
           ${editingMine ? `<button class="tbtn" type="button" data-act="delete">${ic('close')}Delete</button>` : ''}
         </div>
@@ -868,7 +893,7 @@ function pageMaker(fromId) {
       const list = myThemesRaw().filter(r => specToTheme(r, 'mine')?.id !== editingMine);
       try { localStorage.setItem(MY_THEMES_KEY, JSON.stringify(list)); } catch (e) {}
       addSpecThemes(); if (settings.theme === editingMine) settings.theme = 'black';
-      store.set('sig:settings', settings); DRAFT_ON = false; applySettings(); toast('Theme deleted'); location.hash = '#/store';
+      store.set('sig:settings', settings); DRAFT_ON = false; applySettings(); toast('Theme deleted'); nav('#/store');
     }
     else if (b.dataset.act === 'save') {
       if (!String(spec.name || '').trim()) { toast('Give your theme a name first'); return $('[data-k="name"]', form).focus(); }
@@ -877,15 +902,15 @@ function pageMaker(fromId) {
       const list = myThemesRaw().filter(r => { const id = specToTheme(r, 'mine')?.id; return id !== newId && id !== editingMine; });
       list.unshift(clean);
       try { localStorage.setItem(MY_THEMES_KEY, JSON.stringify(list)); }
-      catch (err) { return toast('Too big to save here. Use smaller pictures, or “Add to the site”.'); }
+      catch (err) { return toast('Too big to save here. Use smaller pictures, or use Download.'); }
       addSpecThemes(); DRAFT_ON = false;
       settings.theme = newId; store.set('sig:settings', settings); applySettings();
-      toast(`Saved “${clean.name}” and switched to it`); location.hash = '#/store';
+      toast(`Saved “${clean.name}” and switched to it`); nav('#/store');
     }
     else if (b.dataset.act === 'share') showShare();
   });
 
-  // "Add to the site": a ready-made themes.json to download, plus the pictures to put in the images folder.
+  // "Download": the theme file (themes.json, including the site's other themes) and any uploaded pictures.
   function showShare() {
     const clean = cleanSpec(spec, names);
     const pics = [...new Set([].concat(spec.images.background, spec.images.logo, spec.images.cursor, spec.images.games, spec.images.icons['*']).filter(u => u && u.startsWith('data:')))];
@@ -894,14 +919,11 @@ function pageMaker(fromId) {
     const text = JSON.stringify(file, null, 2);
     const box = $('#mkShare');
     box.hidden = false;
-    box.innerHTML = `<h3>Add “${esc(clean.name)}” to the site</h3>
-      <ol>
-        <li><button class="tbtn" type="button" data-dl="json">${ic('download')}Download themes.json</button> and put it in <code>assets/themes/</code>, replacing the old one. It already has your other ${others.length} theme${others.length === 1 ? '' : 's'} in it.</li>
-        ${pics.length ? `<li>Put ${pics.length === 1 ? 'this picture' : 'these pictures'} in <code>assets/themes/images/</code>: ${pics.map(u => `<button class="tbtn mk-dlpic" type="button" data-dl="${esc(names.get(u))}">${ic('download')}${esc(names.get(u))}</button>`).join(' ')}</li>` : ''}
-        <li>Commit, push and redeploy. It shows up in the Theme Store for everyone.</li>
-      </ol>
-      <details><summary>Or copy just this theme</summary><textarea readonly rows="10" spellcheck="false">${esc(JSON.stringify(clean, null, 2))}</textarea>
-        <p class="set-note">Paste it inside the <code>"themes": [ … ]</code> list in themes.json, with a comma between themes.</p></details>`;
+    box.innerHTML = `<h3>Download “${esc(clean.name)}”</h3>
+      <div class="mk-dl-list">
+        <button class="tbtn" type="button" data-dl="json">${ic('download')}Theme file</button>
+        ${pics.map(u => `<button class="tbtn mk-dlpic" type="button" data-dl="${esc(names.get(u))}">${ic('download')}${esc(names.get(u))}</button>`).join('')}
+      </div>`;
     box.onclick = e => {
       const d = e.target.closest('[data-dl]'); if (!d) return;
       const a = document.createElement('a');
@@ -972,7 +994,7 @@ function pageStore() {
     } else if (b.dataset.use) {
       const y = scrollY;
       setSetting('theme', b.dataset.use); toast(`Now using ${THEMES.find(x => x.id === b.dataset.use).name}`);
-      if (location.hash === '#/store') { pageStore(); scrollTo(0, y); }
+      if (CUR === '#/store') { pageStore(); scrollTo(0, y); }
     }
   };
 }
@@ -982,7 +1004,7 @@ function pageNotFound() {
 
 /* ---------- router ---------- */
 function route() {
-  const parts = decodeURIComponent(location.hash.replace(/^#/, '')).split('/').filter(Boolean);
+  const parts = decodeURIComponent(CUR.replace(/^#/, '')).split('/').filter(Boolean);
   setTitle(`${BRAND} · Free Online Games`);
   renderRail(parts.length ? '#/' + (parts[0] === 'p' ? parts.slice(0, 2) : parts.slice(0, 2)).join('/') : '#/');
   $('#suggest').hidden = true;
@@ -1028,7 +1050,7 @@ function wireSearch() {
       items.forEach((a, i) => a.classList.toggle('active', i === sel));
     } else if (e.key === 'Enter') {
       const q = input.value.trim(); if (!q) return;
-      location.hash = sel >= 0 ? items[sel].getAttribute('href') : '#/search/' + encodeURIComponent(q);
+      nav(sel >= 0 ? items[sel].getAttribute('href') : '#/search/' + encodeURIComponent(q));
       box.hidden = true; input.blur();
     } else if (e.key === 'Escape') { box.hidden = true; input.blur(); }
   });
@@ -1102,7 +1124,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-5.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-7.</p>
       </div>
     </div>`;
 }
@@ -1139,7 +1161,7 @@ function wireSettings() {
     toast('Custom cloak on');
     const y = $('.set-body', dlg).scrollTop; renderSettings(); $('.set-body', dlg).scrollTop = y;
   });
-  dlg.addEventListener('close', () => { if (/^#?\/?$/.test(location.hash) || /#\/(recent|favorites)/.test(location.hash)) route(); });
+  dlg.addEventListener('close', () => { if (CUR === '#/' || /#\/(recent|favorites)/.test(CUR)) route(); });
 }
 
 /* ---------- boot ---------- */
@@ -1167,9 +1189,20 @@ async function boot() {
     used.add(s); g.slug = s; BY_SLUG.set(s, g);
     if (!g.g.includes('Action') && g.g.some(t => t === 'Shooter' || t === 'Fighting')) g.g.push('Action');
   }
-  $('#randomBtn').onclick = () => { const pool = GAMES.filter(g => g.c !== 'check'); location.hash = '#/play/' + pool[Math.floor(Math.random() * pool.length)].slug; };
+  $('#randomBtn').onclick = () => { const pool = GAMES.filter(g => g.c !== 'check'); nav('#/play/' + pool[Math.floor(Math.random() * pool.length)].slug); };
   wireSearch();
-  window.addEventListener('hashchange', route);
+  // Pages live in memory, not in the address bar: it always shows just the domain.
+  // Links still use "#/…" internally; clicks on them are caught here.
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    e.preventDefault(); nav(a.getAttribute('href'));
+  });
+  addEventListener('popstate', e => { CUR = e.state?.sig || '#/'; route(); });
+  // Someone typed or pasted an address with "#/…": go there, then tidy the address bar.
+  addEventListener('hashchange', () => { if (location.hash.length > 1) nav(location.hash, true); });
+  CUR = location.hash.length > 1 ? location.hash : '#/';
+  try { history.replaceState({ sig: CUR }, '', location.pathname + location.search); } catch (e) {}
   route();
 }
 boot();

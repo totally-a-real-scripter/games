@@ -444,3 +444,4 @@ img.i.ti{width:20px;height:20px;object-fit:contain;flex:none;display:inline-bloc
   .mk-preview{position:static;order:-1}
   .mk-two{grid-template-columns:1fr}
 }
+.mk-dl-list{display:flex;flex-wrap:wrap;gap:8px}
