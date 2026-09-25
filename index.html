@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=2026-09-24-3">
+  <link rel="stylesheet" href="assets/style.css?v=2026-09-24-5">
   <script>
     /* Tab cloak: apply the saved tab name + icon before the page paints (set in Settings, see CLOAKS in app.js). */
     try { var cl = JSON.parse(localStorage.getItem('sig:cloak')); if (cl && cl.title) { document.title = cl.title; var fi = document.querySelector('link[rel~="icon"]'); if (fi) { fi.removeAttribute('type'); fi.href = cl.icon; } } } catch (e) {}
@@ -23,8 +23,14 @@
       var h = document.documentElement;
       h.dataset.theme = t; h.dataset.accent = o.accent; h.dataset.size = o.size;
       h.dataset.names = o.names ? 'on' : 'off'; h.dataset.motion = o.motion ? 'on' : 'off';
-      var l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'themeCss'; l.href = 'assets/themes/' + t + '.css';
-      document.head.appendChild(l);
+      /* Picture/JSON themes (themes.json, Theme Maker) have no CSS file: use the CSS app.js saved last time. */
+      var tc = null; try { tc = JSON.parse(localStorage.getItem('sig:themeCss')); } catch (e) {}
+      if (tc && tc.id === t && typeof tc.css === 'string') {
+        var st = document.createElement('style'); st.id = 'themeStyle'; st.textContent = tc.css; document.head.appendChild(st);
+      } else {
+        var l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'themeCss'; l.href = 'assets/themes/' + t + '.css';
+        document.head.appendChild(l);
+      }
     })();
   </script>
 </head>
@@ -50,6 +56,6 @@
 
   <dialog class="settings" id="settings" aria-labelledby="setTitle"></dialog>
 
-  <script src="assets/app.js?v=2026-09-24-3"></script>
+  <script src="assets/app.js?v=2026-09-24-5"></script>
 </body>
 </html>

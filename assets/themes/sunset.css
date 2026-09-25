@@ -1,0 +1,12 @@
+/* Theme: Sunset. Peach and orange, like the end of a summer day. (Theme Store) */
+:root[data-theme="sunset"]{
+  --paper:#ffe9d6;
+  --paper-2:#ffd9bd;
+  --surface:#fff6ee;
+  --ink:#3a1a0c;
+  --line:#3a1a0c;
+  --shadow-c:#3a1a0c;
+  --muted:#8a5a42;
+  --dots:rgba(58,26,12,.08);
+  color-scheme:light;
+}

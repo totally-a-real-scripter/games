@@ -1,0 +1,12 @@
+/* Theme: Lavender. Soft purple, light and relaxing. (Theme Store) */
+:root[data-theme="lavender"]{
+  --paper:#efe9fb;
+  --paper-2:#e2d8f7;
+  --surface:#faf7ff;
+  --ink:#2a1d45;
+  --line:#2a1d45;
+  --shadow-c:#2a1d45;
+  --muted:#6d5e8e;
+  --dots:rgba(42,29,69,.08);
+  color-scheme:light;
+}

@@ -1,0 +1,12 @@
+/* Theme: Matcha. Creamy green tea tones. (Theme Store) */
+:root[data-theme="matcha"]{
+  --paper:#e7efd9;
+  --paper-2:#d9e5c6;
+  --surface:#f6f9ef;
+  --ink:#1f2e14;
+  --line:#1f2e14;
+  --shadow-c:#1f2e14;
+  --muted:#5a6b48;
+  --dots:rgba(31,46,20,.08);
+  color-scheme:light;
+}

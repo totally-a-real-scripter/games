@@ -1,0 +1,12 @@
+/* Theme: Frost. Cool arctic blues, calm and clean. (Theme Store) */
+:root[data-theme="frost"]{
+  --paper:#1f2430;
+  --paper-2:#262c3a;
+  --surface:#2c3344;
+  --ink:#e5ecf6;
+  --line:#434c60;
+  --shadow-c:#11141b;
+  --muted:#96a3b8;
+  --dots:rgba(180,210,255,.06);
+  color-scheme:dark;
+}

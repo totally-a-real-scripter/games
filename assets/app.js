@@ -48,7 +48,14 @@ const THEMES = [
   { id: 'terminal', name: 'Terminal', note: 'Green-on-black hacker mode, all in monospace.', swatch: ['#000000', '#07150b', '#7dff9b'], store: true, dark: true, c: { paper: '#000000', surface: '#07150b', ink: '#7dff9b', line: '#1f5a2d', shadow: '#000000', muted: '#3fae5c' } },
   { id: 'arcade', name: 'Arcade', note: 'Neon pink outlines on deep purple.', swatch: ['#140a24', '#231440', '#fbeaff'], store: true, dark: true, c: { paper: '#140a24', surface: '#231440', ink: '#fbeaff', line: '#ff4fd8', shadow: '#05010c', muted: '#b69bd6' } },
   { id: 'candy', name: 'Candy', note: 'Bubblegum pink with bold outlines.', swatch: ['#fff0f6', '#fffafc', '#3a1030'], store: true, dark: false, c: { paper: '#fff0f6', surface: '#fffafc', ink: '#3a1030', line: '#3a1030', shadow: '#3a1030', muted: '#8a5a78' } },
-  { id: 'seafoam', name: 'Seafoam', note: 'Light, breezy blue-greens.', swatch: ['#e9f6f4', '#f7fdfc', '#0d2b33'], store: true, dark: false, c: { paper: '#e9f6f4', surface: '#f7fdfc', ink: '#0d2b33', line: '#0d2b33', shadow: '#0d2b33', muted: '#4f6f75' } }
+  { id: 'seafoam', name: 'Seafoam', note: 'Light, breezy blue-greens.', swatch: ['#e9f6f4', '#f7fdfc', '#0d2b33'], store: true, dark: false, c: { paper: '#e9f6f4', surface: '#f7fdfc', ink: '#0d2b33', line: '#0d2b33', shadow: '#0d2b33', muted: '#4f6f75' } },
+  { id: 'oled', name: 'OLED', note: 'True black everywhere. Saves battery on OLED screens.', swatch: ['#000000', '#000000', '#ffffff'], store: true, dark: true, c: { paper: '#000000', surface: '#000000', ink: '#ffffff', line: '#262626', shadow: '#000000', muted: '#8c8c8c' } },
+  { id: 'vampire', name: 'Vampire', note: 'Dark purple and blood red. Spooky season, all year.', swatch: ['#16111c', '#241b2e', '#f4ecff'], store: true, dark: true, c: { paper: '#16111c', surface: '#241b2e', ink: '#f4ecff', line: '#4a3560', shadow: '#07040a', muted: '#a894c0' } },
+  { id: 'frost', name: 'Frost', note: 'Cool arctic blues, calm and clean.', swatch: ['#1f2430', '#2c3344', '#e5ecf6'], store: true, dark: true, c: { paper: '#1f2430', surface: '#2c3344', ink: '#e5ecf6', line: '#434c60', shadow: '#11141b', muted: '#96a3b8' } },
+  { id: 'sunset', name: 'Sunset', note: 'Peach and orange, like the end of a summer day.', swatch: ['#ffe9d6', '#fff6ee', '#3a1a0c'], store: true, dark: false, c: { paper: '#ffe9d6', surface: '#fff6ee', ink: '#3a1a0c', line: '#3a1a0c', shadow: '#3a1a0c', muted: '#8a5a42' } },
+  { id: 'lavender', name: 'Lavender', note: 'Soft purple, light and relaxing.', swatch: ['#efe9fb', '#faf7ff', '#2a1d45'], store: true, dark: false, c: { paper: '#efe9fb', surface: '#faf7ff', ink: '#2a1d45', line: '#2a1d45', shadow: '#2a1d45', muted: '#6d5e8e' } },
+  { id: 'matcha', name: 'Matcha', note: 'Creamy green tea tones.', swatch: ['#e7efd9', '#f6f9ef', '#1f2e14'], store: true, dark: false, c: { paper: '#e7efd9', surface: '#f6f9ef', ink: '#1f2e14', line: '#1f2e14', shadow: '#1f2e14', muted: '#5a6b48' } },
+  { id: 'retro-98', name: 'Retro 98', note: 'Gray boxes and teal desktop, like an old PC.', swatch: ['#008080', '#c0c0c0', '#000000'], store: true, dark: false, c: { paper: '#008080', surface: '#c0c0c0', ink: '#000000', line: '#000000', shadow: '#000000', muted: '#404040' } }
 ];
 const STORE_PRICE = 'FREE';
 const ACCENTS = [['mustard', '#ffc93c'], ['tomato', '#ff5a36'], ['teal', '#1fc7b2'], ['lilac', '#b39cff'], ['sky', '#57b7ff'], ['lime', '#b8e05a'], ['pink', '#ff8ad8']];
@@ -115,12 +122,26 @@ Object.assign(ICONS, {
   bag: '<path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
   check: '<path d="M5 12.5 10 17.5 19.5 7"/>'
 });
-const ic = name => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.gamepad}</svg>`;
+let ACTIVE_SPEC = null;   // the active JSON / Theme Maker theme (null for CSS-file themes); see theme engine below
+const ic = name => {
+  const icons = ACTIVE_SPEC?.images?.icons, pic = icons && (icons[name] || icons['*']);
+  if (pic) return `<img class="i ti" src="${esc(themeUrl(pic))}" alt="" aria-hidden="true">`;
+  return `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.gamepad}</svg>`;
+};
+// A game's picture, or one of the active theme's "games" pictures (the same game always gets the same one).
+function gi(g) {
+  let pics = ACTIVE_SPEC?.images?.games;
+  if (typeof pics === 'string') pics = [pics];
+  pics = Array.isArray(pics) ? pics.filter(Boolean) : [];
+  if (!pics.length) return g.i;
+  let h = 0; for (const ch of (g.slug || g.t || '')) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return themeUrl(pics[Math.abs(h) % pics.length]);
+}
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slugify = s => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'game';
-const encPath = p => p.split('/').map(encodeURIComponent).join('/');
+const encPath = p => /^(https?:|data:|blob:)/i.test(p) ? p : p.split('/').map(encodeURIComponent).join('/');
 const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -129,7 +150,7 @@ const store = {
 const settings = Object.assign({}, SETTINGS_DEFAULTS, store.get('sig:settings', {}));
 /* Themes "bought" in the Theme Store, saved on this device. Themes without store: true are always owned. */
 const ownedThemes = new Set(store.get('sig:themes', []));
-const ownsTheme = id => { const t = THEMES.find(x => x.id === id); return !!t && (!t.store || ownedThemes.has(id)); };
+const ownsTheme = id => { const t = THEMES.find(x => x.id === id); return !!t && (!t.store || t.mine || ownedThemes.has(id)); };
 function buyTheme(id) { ownedThemes.add(id); store.set('sig:themes', [...ownedThemes]); }
 function resolvedTheme() {
   const t = settings.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'black') : settings.theme;
@@ -139,15 +160,12 @@ function applySettings() {
   const h = document.documentElement, t = resolvedTheme();
   h.dataset.theme = t; h.dataset.accent = settings.accent; h.dataset.size = settings.size;
   h.dataset.names = settings.names ? 'on' : 'off'; h.dataset.motion = settings.motion ? 'on' : 'off';
-  let link = document.getElementById('themeCss');
-  if (!link) { link = document.createElement('link'); link.rel = 'stylesheet'; link.id = 'themeCss'; document.head.appendChild(link); }
-  const href = `assets/themes/${t}.css`;
-  if (link.getAttribute('href') !== href) link.setAttribute('href', href);
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = (THEMES.find(x => x.id === t) || THEMES[0]).swatch[0];
+  const changed = DRAFT_ON ? false : paintTheme(THEMES.find(x => x.id === t) || THEMES[0]);
   applyCloak();
+  return changed;
 }
-function setSetting(k, v) { settings[k] = v; store.set('sig:settings', settings); applySettings(); }
+// Returns after redrawing the page when the new theme swaps game pictures or icons.
+function setSetting(k, v) { settings[k] = v; store.set('sig:settings', settings); if (applySettings() && GAMES.length) route(); }
 matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => { if (settings.theme === 'system') applySettings(); });
 
 let GAMES = [], BY_SLUG = new Map();
@@ -250,7 +268,7 @@ function card(g) {
   const sticker = g.pop ? '<span class="sticker hot">Hot</span>' : '';
   const fav = favs.has(g.slug) ? `<span class="fav-mark">${ic('heart')}</span>` : '';
   return `<a class="card" href="#/play/${g.slug}" title="${esc(g.t)}">
-    <div class="thumb">${sticker}${fav}${img(g.i)}</div>
+    <div class="thumb">${sticker}${fav}${img(gi(g))}</div>
     <div class="meta"><span class="name">${esc(g.t)}</span><span class="sub">${esc(platLabel(g))} · ${esc(g.g[0])}</span></div></a>`;
 }
 function head(label, title, href, hrefText = 'See all') {
@@ -290,7 +308,7 @@ function pageHome() {
   app.innerHTML = `
     <section class="drop">
       <a class="drop-main" href="#/play/${top.slug}">
-        <div class="art"><img src="${encPath(top.i)}" alt=""></div>
+        <div class="art"><img src="${encPath(gi(top))}" alt=""></div>
         <span class="stamp"><small>GAME OF THE DAY</small><b>${month} ${d.getDate()}</b></span>
         <div class="body">
           <div><div class="label">Daily Drop · ${esc(platLabel(top))}</div><h1>${esc(top.t)}</h1></div>
@@ -299,7 +317,7 @@ function pageHome() {
       </a>
       <div class="lineup">
         <div class="lineup-head"><h2>Also dropping today</h2><span class="clock" id="clock"></span></div>
-        <ol>${lineup.map((g, i) => `<li><a href="#/play/${g.slug}"><span class="num">0${i + 1}</span>${img(g.i)}<span><b>${esc(g.t)}</b><span class="label">${esc(platLabel(g))} · ${esc(g.g[0])}</span></span></a></li>`).join('')}</ol>
+        <ol>${lineup.map((g, i) => `<li><a href="#/play/${g.slug}"><span class="num">0${i + 1}</span>${img(gi(g))}<span><b>${esc(g.t)}</b><span class="label">${esc(platLabel(g))} · ${esc(g.g[0])}</span></span></a></li>`).join('')}</ol>
       </div>
     </section>
 
@@ -312,7 +330,7 @@ function pageHome() {
     </section>
 
     <section class="block">${head('The ones everyone keeps playing', 'Top 10 today', '#/popular')}
-      <div class="charts">${charts.map((g, i) => `<a class="chart-row" href="#/play/${g.slug}"><span class="rank">${i + 1}</span>${img(g.i)}<span><b>${esc(g.t)}</b><span class="label">${esc(platLabel(g))} · ${esc(g.g[0])}</span></span></a>`).join('')}</div>
+      <div class="charts">${charts.map((g, i) => `<a class="chart-row" href="#/play/${g.slug}"><span class="rank">${i + 1}</span>${img(gi(g))}<span><b>${esc(g.t)}</b><span class="label">${esc(platLabel(g))} · ${esc(g.g[0])}</span></span></a>`).join('')}</div>
     </section>
 
     <section class="block">${head('Browse the shelves', 'By category')}
@@ -486,7 +504,7 @@ function pagePlay(slug) {
   const g = BY_SLUG.get(slug); if (!g) return pageNotFound();
   pushRecent(slug);
   const sim = similarGames(g, 14);
-  const bg = encPath(g.i).replace(/'/g, '%27');
+  const bg = encPath(gi(g)).replace(/'/g, '%27');
   app.innerHTML = `
     <div class="play">
       <div>
@@ -503,7 +521,7 @@ function pagePlay(slug) {
           </div>
           <div class="screen" id="screen">
             <div class="insert" id="insert"><div class="bg" style="background-image:url('${bg}')"></div>
-              <div class="inner"><img src="${encPath(g.i)}" alt=""><span class="go">${ic('play')}Start game</span></div></div>
+              <div class="inner"><img src="${encPath(gi(g))}" alt=""><span class="go">${ic('play')}Start game</span></div></div>
           </div>
           <div class="cab-foot"><span class="label">Filed under</span>
             ${g.g.map(t => { const [n, i, c] = genreInfo(t); return `<a class="pill" href="#/c/${slugify(n)}" style="--c:${c}">${ic(i)}${esc(n)}</a>`; }).join('')}
@@ -512,7 +530,7 @@ function pagePlay(slug) {
         </div>
         <section class="block" style="margin-top:40px">${head('If you like this one', 'More like it')}<div class="grid g4">${sim.slice(6, 14).map(card).join('')}</div></section>
       </div>
-      <aside class="upnext"><h2>Up next</h2>${sim.slice(0, 6).map(x => `<a href="#/play/${x.slug}">${img(x.i)}<span><b>${esc(x.t)}</b><small>${esc(platLabel(x))}</small></span></a>`).join('')}</aside>
+      <aside class="upnext"><h2>Up next</h2>${sim.slice(0, 6).map(x => `<a href="#/play/${x.slug}">${img(gi(x))}<span><b>${esc(x.t)}</b><small>${esc(platLabel(x))}</small></span></a>`).join('')}</aside>
     </div>${footer()}`;
   const start = () => {
     if (settings.newtab) { window.open(encPath(g.p), '_blank', 'noopener'); return false; }
@@ -528,35 +546,422 @@ function pagePlay(slug) {
   $('#favBtn').onclick = e => { toggleFav(slug); e.currentTarget.classList.toggle('on', favs.has(slug)); };
   setTitle(`${g.t} · ${BRAND}`);
 }
+/* ---------- theme engine ----------
+   Themes can be a CSS file (assets/themes/<id>.css, listed in THEMES above) or a simple JSON "spec":
+   - in assets/themes/themes.json (shows up in the Theme Store for everyone), or
+   - made in the Theme Maker (#/make) and saved in this browser ("Made by you").
+   A spec is turned into CSS here, so no CSS knowledge is needed. See assets/themes/README.md. */
+const THEME_DIR = 'assets/themes/';
+const MY_THEMES_KEY = 'sig:myThemes';
+const DARK_BASE = { background: '#0b0b0c', background2: '#151517', card: '#18181b', text: '#f2f0ea', lines: '#34343a', shadow: '#000000', muted: '#9a9aa3' };
+const LIGHT_BASE = { background: '#f4efe6', background2: '#ebe4d7', card: '#fffaf1', text: '#17130f', lines: '#17130f', shadow: '#17130f', muted: '#6f655a' };
+let PACK_RAW = [];        // themes.json as loaded (the Theme Maker's download adds to it)
+let DRAFT_ON = false;     // the Theme Maker is previewing a theme on the whole site
+
+// Picture paths in a theme are relative to assets/themes/ ("images/cat.png"), or a full web address.
+const themeUrl = u => !u ? '' : /^(https?:|data:|blob:|\/)/i.test(u) ? u : THEME_DIR + String(u).replace(/^\.?\//, '');
+const cssUrl = u => `url("${themeUrl(u).replace(/["\\\n\r]/g, c => encodeURIComponent(c))}")`;
+const cssVal = v => typeof v === 'string' && v.trim() && !/[;{}<>]/.test(v) ? v.trim() : null;
+const cssFont = v => typeof v === 'string' && v.trim() ? v.trim().replace(/["\\;{}<>]/g, '') : null;
+const numOr = (v, d) => (typeof v === 'number' && isFinite(v)) ? v : (typeof v === 'string' && v.trim() !== '' && isFinite(+v) ? +v : d);
+
+// A theme spec (from JSON or the maker) -> an entry in THEMES.
+function specToTheme(raw, source) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  let id = slugify(String(raw.id || raw.name || ''));
+  if (!id || id === 'game') return null;
+  if (source === 'mine' && !id.startsWith('my-')) id = 'my-' + id;
+  const dark = raw.dark !== false && raw.dark !== 'false';
+  const base = dark ? DARK_BASE : LIGHT_BASE, col = raw.colors || {};
+  const colors = {};
+  for (const k of Object.keys(base)) colors[k] = cssVal(col[k]) || base[k];
+  colors.accent = cssVal(col.accent); colors.dots = cssVal(col.dots);
+  return {
+    id, name: String(raw.name || id).slice(0, 60), note: String(raw.note || '').slice(0, 160),
+    price: raw.price ? String(raw.price).slice(0, 40) : '', dark, store: true, mine: source === 'mine', source,
+    spec: raw, colors, swatch: [colors.background, colors.card, colors.text],
+    c: { paper: colors.background, surface: colors.card, ink: colors.text, line: colors.lines, shadow: colors.shadow, muted: colors.muted }
+  };
+}
+
+// The CSS for a spec theme. Everything is scoped to :root[data-theme="<id>"].
+function themeCss(t) {
+  const s = t.spec, c = t.colors, im = s.images || {}, L = s.layout || {}, R = `:root[data-theme="${t.id}"]`;
+  const font = cssFont(s.font), hfont = cssFont(s.headingFont);
+  let css = `${R}{--paper:${c.background};--paper-2:${c.background2};--surface:${c.card};--ink:${c.text};--line:${c.lines};` +
+    `--shadow-c:${L.shadows === false ? 'transparent' : c.shadow};--muted:${c.muted};` +
+    `--dots:${c.dots || (t.dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.08)')};color-scheme:${t.dark ? 'dark' : 'light'};` +
+    (font ? `--sans:"${font}",system-ui,sans-serif;` : '') +
+    `--r:${Math.max(0, Math.min(60, numOr(L.radius, 12)))}px;--bw:${Math.max(0, Math.min(8, numOr(L.border, 2)))}px}`;
+  if (c.accent) css += `${R}[data-accent]{--accent:${c.accent}}`;
+  if (hfont) css += `${R} h1,${R} h2{font-family:"${hfont}",var(--sans)}`;
+  if (im.background) {
+    const mode = im.backgroundStyle || 'tile', size = numOr(im.backgroundSize, 0);
+    css += `${R} body{background-image:${cssUrl(im.background)};` + (
+      mode === 'cover' ? 'background-size:cover;background-position:center;background-repeat:no-repeat;background-attachment:fixed}' :
+      mode === 'stretch' ? 'background-size:100% 100%;background-repeat:no-repeat;background-attachment:fixed}' :
+      `background-size:${size > 0 ? size + 'px' : 'auto'};background-repeat:repeat}`);
+  }
+  if (im.logo) css += `${R} .logo-box{display:none}${R} .logo-img{display:block}`;
+  if (im.cursor) {
+    const cur = cssUrl(im.cursor), hov = cssUrl(im.cursorHover || im.cursor);
+    css += `${R},${R} *{cursor:${cur} 4 4,auto!important}${R} a,${R} a *,${R} button,${R} button *,${R} [role=switch]{cursor:${hov} 4 4,pointer!important}`;
+  }
+  if (L.wobble) css += `${R} .card:nth-child(odd){rotate:-2deg}${R} .card:nth-child(even){rotate:1.5deg}${R} .card:nth-child(3n){rotate:3deg}`;
+  if (L.spin) css += `${R} .card{transition:transform .12s,box-shadow .12s,rotate .8s}${R} .card:hover{rotate:360deg}`;
+  if (L.roundThumbs) css += `${R} .card .thumb{aspect-ratio:1;border-radius:50%;margin:10px 10px 0;border:var(--bw) solid var(--line)}`;
+  const tilt = Math.max(-10, Math.min(10, numOr(L.tilt, 0)));
+  if (tilt || L.mirror) css += `${R}{overflow-x:hidden}${R} body{overflow-x:hidden;${tilt ? `rotate:${tilt}deg;` : ''}${L.mirror ? 'scale:-1 1;' : ''}}`;
+  if (typeof s.css === 'string') css += '\n' + s.css.replace(/<\/?style/gi, '');
+  return css;
+}
+
+// Put a theme on the page: its CSS file or generated CSS, font, logo, logo text and header icons.
+function paintTheme(t) {
+  const h = document.documentElement;
+  h.dataset.theme = t.id;
+  let link = document.getElementById('themeCss');
+  if (!link) { link = document.createElement('link'); link.rel = 'stylesheet'; link.id = 'themeCss'; document.head.appendChild(link); }
+  let style = document.getElementById('themeStyle');
+  if (!style) { style = document.createElement('style'); style.id = 'themeStyle'; document.head.appendChild(style); }
+  const prevSpec = ACTIVE_SPEC;
+  ACTIVE_SPEC = t.spec || null;
+  if (t.spec) {
+    link.removeAttribute('href');
+    const css = themeCss(t);
+    if (style.textContent !== css) style.textContent = css;
+    // Remembered so index.html can paint this theme before the page loads (no flash of the default theme).
+    if (t.id !== 'draft') { try { localStorage.setItem('sig:themeCss', JSON.stringify({ id: t.id, css })); } catch (e) {} }
+  } else {
+    const href = `${THEME_DIR}${t.id}.css`;
+    if (link.getAttribute('href') !== href) link.setAttribute('href', href);
+    style.textContent = '';
+    try { localStorage.removeItem('sig:themeCss'); } catch (e) {}
+  }
+  // Google Font, if the theme names one.
+  const fonts = [cssFont(t.spec?.font), cssFont(t.spec?.headingFont)].filter(Boolean);
+  let fl = document.getElementById('themeFont');
+  if (fonts.length) {
+    const href = 'https://fonts.googleapis.com/css2?' + fonts.map(f => 'family=' + encodeURIComponent(f).replace(/%20/g, '+')).join('&') + '&display=swap';
+    if (!fl) { fl = document.createElement('link'); fl.rel = 'stylesheet'; fl.id = 'themeFont'; document.head.appendChild(fl); }
+    if (fl.getAttribute('href') !== href) fl.setAttribute('href', href);
+  } else if (fl) fl.remove();
+  // Logo picture and logo text.
+  const logo = $('.logo'); let li = $('.logo-img');
+  const logoPic = t.spec?.images?.logo;
+  if (logo && logoPic) {
+    if (!li) { li = document.createElement('img'); li.className = 'logo-img'; li.alt = ''; logo.appendChild(li); }
+    if (li.getAttribute('src') !== themeUrl(logoPic)) li.src = themeUrl(logoPic);
+  } else if (li) li.remove();
+  const lt = Array.isArray(t.spec?.logoText) ? t.spec.logoText : [];
+  const a = $('#brandA'), b = $('#brandB');
+  if (a) a.textContent = lt[0] ? String(lt[0]) : CONFIG.brand[0];
+  if (b) b.textContent = lt[0] || lt[1] ? String(lt[1] || '') : CONFIG.brand[1];
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t.swatch?.[0] || '#0b0b0c';
+  // Icons/game pictures changed: redraw the header icons now, and the page if it's showing.
+  if (prevSpec !== ACTIVE_SPEC) {
+    const rb = $('#randomBtn'); if (rb && rb.firstElementChild && !rb.firstElementChild.classList.contains('tbtn-label')) rb.firstElementChild.outerHTML = ic('shuffle');
+    const sb = $('#settingsBtn'); if (sb && sb.innerHTML) sb.innerHTML = ic('gear');
+  }
+  return prevSpec !== ACTIVE_SPEC;
+}
+
+// Load assets/themes/themes.json and the themes made in this browser, and add them to THEMES.
+async function loadThemePacks() {
+  try {
+    const data = await fetch(THEME_DIR + 'themes.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null);
+    PACK_RAW = Array.isArray(data?.themes) ? data.themes : [];
+  } catch (e) { PACK_RAW = []; console.warn('assets/themes/themes.json could not be read. Check it for a missing comma or quote.', e); }
+  addSpecThemes();
+}
+function myThemesRaw() { try { const v = JSON.parse(localStorage.getItem(MY_THEMES_KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function addSpecThemes() {
+  for (let i = THEMES.length - 1; i >= 0; i--) if (THEMES[i].spec) THEMES.splice(i, 1);
+  for (const [list, src] of [[myThemesRaw(), 'mine'], [PACK_RAW, 'pack']]) for (const raw of list) {
+    const t = specToTheme(raw, src);
+    if (t && !THEMES.some(x => x.id === t.id)) THEMES.push(t);
+  }
+}
+
+/* ---------- theme maker (#/make, #/make/<theme id>) ---------- */
+const MAKER_FONTS = ['Comic Neue', 'Press Start 2P', 'Bangers', 'Creepster', 'Pacifico', 'Lobster', 'Silkscreen', 'VT323', 'Luckiest Guy', 'Chewy', 'Permanent Marker', 'Rubik Glitch', 'Fredoka', 'Space Grotesk', 'JetBrains Mono'];
+function blankSpec(dark = true) {
+  return {
+    name: 'My Theme', note: 'Made in the Theme Maker.', price: '1 high five', dark,
+    colors: Object.assign({}, dark ? DARK_BASE : LIGHT_BASE, { accent: '' }),
+    font: '', headingFont: '', logoText: ['', ''],
+    images: { background: '', backgroundStyle: 'tile', backgroundSize: '', logo: '', cursor: '', games: [], icons: { '*': '' } },
+    layout: { radius: 12, border: 2, shadows: true, wobble: false, spin: false, roundThumbs: false, tilt: 0, mirror: false },
+    css: ''
+  };
+}
+// Fill in anything missing so the form always has a value to show.
+function fullSpec(raw) {
+  const b = blankSpec(raw.dark !== false), s = JSON.parse(JSON.stringify(raw));
+  const out = Object.assign({}, b, s);
+  out.colors = Object.assign({}, b.colors, s.colors); out.images = Object.assign({}, b.images, s.images);
+  out.images.icons = Object.assign({ '*': '' }, s.images?.icons); out.layout = Object.assign({}, b.layout, s.layout);
+  if (typeof out.images.games === 'string') out.images.games = [out.images.games];
+  if (!Array.isArray(out.logoText)) out.logoText = ['', ''];
+  return out;
+}
+// A spec without empty values, ready to save or share.
+function cleanSpec(spec, names) {
+  const pic = u => names && names.get(u) ? 'images/' + names.get(u) : u;
+  const s = JSON.parse(JSON.stringify(spec)), out = { id: slugify(s.name || 'my-theme'), name: s.name, note: s.note, price: s.price, dark: !!s.dark };
+  out.colors = {}; for (const [k, v] of Object.entries(s.colors)) if (v) out.colors[k] = v;
+  if (s.font) out.font = s.font; if (s.headingFont) out.headingFont = s.headingFont;
+  if (s.logoText?.[0] || s.logoText?.[1]) out.logoText = s.logoText;
+  const im = {};
+  for (const k of ['background', 'logo', 'cursor']) if (s.images[k]) im[k] = pic(s.images[k]);
+  if (im.background) { im.backgroundStyle = s.images.backgroundStyle || 'tile'; if (s.images.backgroundSize) im.backgroundSize = +s.images.backgroundSize; }
+  if (s.images.games?.length) im.games = s.images.games.map(pic);
+  const icons = {}; for (const [k, v] of Object.entries(s.images.icons || {})) if (v) icons[k] = pic(v);
+  if (Object.keys(icons).length) im.icons = icons;
+  if (Object.keys(im).length) out.images = im;
+  out.layout = s.layout;
+  if (s.css) out.css = s.css;
+  return out;
+}
+
+function pageMaker(fromId) {
+  setTitle(`Theme Maker · ${BRAND}`);
+  const from = THEMES.find(t => t.id === fromId);
+  let spec, editingMine = null;
+  if (from?.spec) { spec = fullSpec(from.spec); if (from.mine) editingMine = from.id; else spec.name = from.name + ' Remix'; }
+  else if (from?.c) { spec = blankSpec(from.dark !== false); Object.assign(spec.colors, { background: from.c.paper, card: from.c.surface, text: from.c.ink, lines: from.c.line, shadow: from.c.shadow, muted: from.c.muted }); spec.name = from.name + ' Remix'; }
+  else spec = blankSpec(resolvedTheme() !== 'paper');
+  const names = new Map();   // uploaded picture (data: URL) -> its file name, for sharing
+  const sample = shuffled(GAMES.filter(g => g.c !== 'check'), 'maker').slice(0, 6);
+
+  const colorRow = (k, label) => `<label class="mk-color"><input type="color" data-k="colors.${k}" value="${esc(/^#[0-9a-f]{6}$/i.test(spec.colors[k]) ? spec.colors[k] : '#888888')}"><span>${label}</span></label>`;
+  const picField = (k, label, hint, multi) => `<div class="mk-pic" data-pic="${k}">
+      <div class="mk-pic-head"><b>${label}</b><small>${hint}</small></div>
+      <div class="mk-thumbs"></div>
+      <div class="mk-pic-row"><label class="tbtn mk-file">${ic('download')}Choose picture${multi ? 's' : ''}<input type="file" accept="image/*" ${multi ? 'multiple' : ''} hidden></label>
+        <input class="mk-url" type="text" placeholder="${multi ? 'images/a.png, images/b.png' : 'images/my-picture.png or https://…'}" spellcheck="false">
+        <button class="tbtn mk-clear" type="button">Clear</button></div></div>`;
+  const toggle = (k, label, hint) => `<div class="opt-row"><span><b>${label}</b><small>${hint}</small></span><button type="button" class="switch" role="switch" data-sw="layout.${k}" aria-label="${label}"></button></div>`;
+  const range = (k, label, min, max, unit) => `<label class="mk-range"><span>${label} <output data-out="layout.${k}"></output>${unit}</span><input type="range" min="${min}" max="${max}" step="1" data-k="layout.${k}"></label>`;
+
+  app.innerHTML = `
+    <section class="banner" style="--c:#b39cff"><span class="badge-ico">${ic('sparkles')}</span>
+      <div><div class="label">${editingMine ? 'Editing your theme' : 'Make a theme, no code needed'}</div><h1>Theme Maker</h1>
+      <p>Everything you change shows up on the whole site right away. Pictures can be PNG, JPG, GIF or SVG.</p></div></section>
+    <div class="maker">
+      <form class="mk-form" id="mkForm" autocomplete="off" onsubmit="return false">
+        <fieldset><legend>1 · The basics</legend>
+          <label class="mk-field"><span>Theme name</span><input data-k="name" maxlength="60"></label>
+          <label class="mk-field"><span>Description</span><input data-k="note" maxlength="160"></label>
+          <label class="mk-field"><span>Joke price <small>(it's still free)</small></span><input data-k="price" maxlength="40" placeholder="3 potatoes"></label>
+          <div class="opt-row"><span><b>Starting colors</b><small>Picks a dark or light set of colors to start from.</small></span>
+            <div class="seg"><button type="button" data-base="dark">Dark</button><button type="button" data-base="light">Light</button></div></div>
+        </fieldset>
+        <fieldset><legend>2 · Colors</legend>
+          <div class="mk-colors">${colorRow('background', 'Background')}${colorRow('background2', 'Background 2')}${colorRow('card', 'Cards')}${colorRow('text', 'Text')}${colorRow('lines', 'Outlines')}${colorRow('shadow', 'Shadows')}${colorRow('muted', 'Faded text')}
+            <label class="mk-color"><input type="color" data-k="colors.accent" value="${esc(/^#[0-9a-f]{6}$/i.test(spec.colors.accent) ? spec.colors.accent : '#ffc93c')}"><span>Accent</span></label></div>
+          <div class="opt-row"><span><b>Lock the accent color</b><small>Off: everyone keeps the accent they picked in Settings.</small></span><button type="button" class="switch" role="switch" data-accent-lock aria-label="Lock the accent color"></button></div>
+        </fieldset>
+        <fieldset><legend>3 · Fonts &amp; logo</legend>
+          <datalist id="mkFonts">${MAKER_FONTS.map(f => `<option value="${esc(f)}">`).join('')}</datalist>
+          <label class="mk-field"><span>Font <small>(any Google Font name)</small></span><input data-k="font" list="mkFonts" placeholder="Site default"></label>
+          <label class="mk-field"><span>Headings font</span><input data-k="headingFont" list="mkFonts" placeholder="Same as the font"></label>
+          <div class="mk-two"><label class="mk-field"><span>Logo text</span><input data-k="logoText.0" placeholder="${esc(CONFIG.brand[0])}" maxlength="24"></label>
+            <label class="mk-field"><span>Logo ending</span><input data-k="logoText.1" placeholder="${esc(CONFIG.brand[1])}" maxlength="12"></label></div>
+          ${picField('logo', 'Logo picture', 'Replaces the whole logo. About 150×44 looks best.')}
+        </fieldset>
+        <fieldset><legend>4 · Pictures</legend>
+          ${picField('background', 'Background', 'Behind everything.')}
+          <div class="mk-two"><label class="mk-field"><span>Background style</span><select data-k="images.backgroundStyle"><option value="tile">Tile (repeat)</option><option value="cover">Fill the screen</option><option value="stretch">Stretch</option></select></label>
+            <label class="mk-field"><span>Tile size <small>(px, blank = actual size)</small></span><input data-k="images.backgroundSize" type="number" min="8" max="2000" placeholder="auto"></label></div>
+          ${picField('games', 'Game pictures', 'Replaces every game’s thumbnail. Add a few and they get mixed.', true)}
+          ${picField('icons', 'Icon picture', 'Replaces every small icon (menu, buttons).')}
+          ${picField('cursor', 'Mouse cursor', 'Keep it small: 32×32 works everywhere, 128×128 is the max.')}
+        </fieldset>
+        <fieldset><legend>5 · Layout</legend>
+          ${range('radius', 'Corner roundness', 0, 40, 'px')}${range('border', 'Outline thickness', 0, 6, 'px')}${range('tilt', 'Tilt the whole site', -5, 5, '°')}
+          ${toggle('shadows', 'Shadows', 'The chunky shadows under cards and buttons.')}
+          ${toggle('wobble', 'Wobbly cards', 'Every game card is a little crooked.')}
+          ${toggle('spin', 'Spin on hover', 'Cards do a full spin when you point at them.')}
+          ${toggle('roundThumbs', 'Round thumbnails', 'Game pictures become circles.')}
+          ${toggle('mirror', 'Mirror world', 'Flips the whole site backwards. Good luck reading.')}
+        </fieldset>
+        <details class="mk-adv"><summary>Advanced: extra CSS</summary>
+          <p class="set-note">Anything here is added as-is. Start rules with <code>:root[data-theme="ID"]</code> so they only apply to this theme.</p>
+          <textarea data-k="css" rows="6" spellcheck="false" placeholder=".card{border-style:dashed}"></textarea></details>
+        <div class="mk-actions">
+          <button class="tbtn mk-save" type="button" data-act="save">${ic('check')}${editingMine ? 'Save changes' : 'Save & use'}</button>
+          <button class="tbtn" type="button" data-act="share">${ic('download')}Add to the site</button>
+          <button class="tbtn" type="button" data-act="reset">${ic('restart')}Start over</button>
+          ${editingMine ? `<button class="tbtn" type="button" data-act="delete">${ic('close')}Delete</button>` : ''}
+        </div>
+        <div class="mk-share" id="mkShare" hidden></div>
+      </form>
+      <aside class="mk-preview"><div class="label">Preview</div><div class="grid g3">${sample.map(card).join('')}</div>
+        <p class="set-note">The whole site (menu, logo, background) is showing your theme too.</p></aside>
+    </div>
+    ${footer()}`;
+
+  const form = $('#mkForm');
+  const getK = k => k.split('.').reduce((o, x) => o?.[x], spec);
+  const setK = (k, v) => { const ks = k.split('.'), last = ks.pop(); const o = ks.reduce((o, x) => o[x], spec); o[last] = v; };
+  const picVal = k => k === 'icons' ? spec.images.icons['*'] : spec.images[k];
+  const setPic = (k, v) => { if (k === 'icons') spec.images.icons['*'] = v; else spec.images[k] = v; };
+  function fill() {
+    form.querySelectorAll('[data-k]').forEach(el => { if (el.type === 'color' && el.dataset.k === 'colors.accent') return; const v = getK(el.dataset.k); el.value = v ?? ''; });
+    form.querySelectorAll('[data-out]').forEach(el => { el.textContent = getK(el.dataset.out); });
+    form.querySelectorAll('[data-sw]').forEach(el => el.setAttribute('aria-checked', !!getK(el.dataset.sw)));
+    $('[data-accent-lock]', form).setAttribute('aria-checked', !!spec.colors.accent);
+    form.querySelectorAll('[data-base]').forEach(el => el.classList.toggle('on', (el.dataset.base === 'dark') === !!spec.dark));
+    form.querySelectorAll('[data-pic]').forEach(box => {
+      const k = box.dataset.pic, v = picVal(k), list = Array.isArray(v) ? v : (v ? [v] : []);
+      $('.mk-thumbs', box).innerHTML = list.map(u => `<span class="mk-thumb"><img src="${esc(themeUrl(u))}" alt="" onerror="this.parentNode.classList.add('bad')"><small>${esc(names.get(u) || u.slice(0, 40))}</small></span>`).join('');
+      const typed = list.filter(u => !u.startsWith('data:'));
+      const urlBox = $('.mk-url', box); if (document.activeElement !== urlBox) urlBox.value = typed.join(', ');
+    });
+  }
+  let raf = 0;
+  function preview() {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const t = specToTheme(Object.assign({}, spec, { id: 'draft' }), 'draft'); t.id = 'draft';
+      DRAFT_ON = true; paintTheme(t);
+      renderRail('#/make');
+      $('.mk-preview .grid', app).innerHTML = sample.map(card).join('');
+    });
+  }
+  form.addEventListener('input', e => {
+    const el = e.target;
+    if (el.dataset.k) {
+      let v = el.value;
+      if (el.type === 'range') { v = +v; const o = $(`[data-out="${el.dataset.k}"]`, form); if (o) o.textContent = v; }
+      if (el.dataset.k === 'colors.accent') { spec.colors.accent = v; $('[data-accent-lock]', form).setAttribute('aria-checked', 'true'); }
+      else setK(el.dataset.k, v);
+      preview();
+    } else if (el.classList.contains('mk-url')) {
+      const k = el.closest('[data-pic]').dataset.pic, typed = el.value.split(',').map(x => x.trim()).filter(Boolean);
+      const uploads = [].concat(picVal(k) || []).filter(u => u.startsWith('data:'));
+      setPic(k, k === 'games' ? [...uploads, ...typed] : (typed[0] || uploads[0] || ''));
+      const box = el.closest('[data-pic]'); const v = picVal(k), list = Array.isArray(v) ? v : (v ? [v] : []);
+      $('.mk-thumbs', box).innerHTML = list.map(u => `<span class="mk-thumb"><img src="${esc(themeUrl(u))}" alt="" onerror="this.parentNode.classList.add('bad')"><small>${esc(names.get(u) || u.slice(0, 40))}</small></span>`).join('');
+      preview();
+    }
+  });
+  form.addEventListener('change', e => {
+    const el = e.target;
+    if (el.type === 'file') {
+      const k = el.closest('[data-pic]').dataset.pic, files = [...el.files].filter(f => f.type.startsWith('image/'));
+      if (!files.length) return;
+      Promise.all(files.map(f => new Promise(res => { const r = new FileReader(); r.onload = () => { names.set(r.result, f.name.replace(/[^\w.\-]+/g, '-')); res(r.result); }; r.readAsDataURL(f); })))
+        .then(urls => { setPic(k, k === 'games' ? [...(spec.images.games || []), ...urls] : urls[0]); el.value = ''; fill(); preview(); });
+    } else if (el.tagName === 'SELECT' && el.dataset.k) { setK(el.dataset.k, el.value); preview(); }
+  });
+  form.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.sw) { setK(b.dataset.sw, !getK(b.dataset.sw)); b.setAttribute('aria-checked', !!getK(b.dataset.sw)); preview(); }
+    else if ('accentLock' in b.dataset) { spec.colors.accent = spec.colors.accent ? '' : $('[data-k="colors.accent"]', form).value; fill(); preview(); }
+    else if (b.dataset.base) { const dark = b.dataset.base === 'dark'; spec.dark = dark; Object.assign(spec.colors, dark ? DARK_BASE : LIGHT_BASE); fill(); preview(); }
+    else if (b.classList.contains('mk-clear')) { const k = b.closest('[data-pic]').dataset.pic; setPic(k, k === 'games' ? [] : ''); fill(); preview(); }
+    else if (b.dataset.act === 'reset') { spec = blankSpec(true); names.clear(); fill(); preview(); toast('Started over'); }
+    else if (b.dataset.act === 'delete') {
+      const list = myThemesRaw().filter(r => specToTheme(r, 'mine')?.id !== editingMine);
+      try { localStorage.setItem(MY_THEMES_KEY, JSON.stringify(list)); } catch (e) {}
+      addSpecThemes(); if (settings.theme === editingMine) settings.theme = 'black';
+      store.set('sig:settings', settings); DRAFT_ON = false; applySettings(); toast('Theme deleted'); location.hash = '#/store';
+    }
+    else if (b.dataset.act === 'save') {
+      if (!String(spec.name || '').trim()) { toast('Give your theme a name first'); return $('[data-k="name"]', form).focus(); }
+      const clean = cleanSpec(spec);
+      const newId = specToTheme(clean, 'mine').id;
+      const list = myThemesRaw().filter(r => { const id = specToTheme(r, 'mine')?.id; return id !== newId && id !== editingMine; });
+      list.unshift(clean);
+      try { localStorage.setItem(MY_THEMES_KEY, JSON.stringify(list)); }
+      catch (err) { return toast('Too big to save here. Use smaller pictures, or “Add to the site”.'); }
+      addSpecThemes(); DRAFT_ON = false;
+      settings.theme = newId; store.set('sig:settings', settings); applySettings();
+      toast(`Saved “${clean.name}” and switched to it`); location.hash = '#/store';
+    }
+    else if (b.dataset.act === 'share') showShare();
+  });
+
+  // "Add to the site": a ready-made themes.json to download, plus the pictures to put in the images folder.
+  function showShare() {
+    const clean = cleanSpec(spec, names);
+    const pics = [...new Set([].concat(spec.images.background, spec.images.logo, spec.images.cursor, spec.images.games, spec.images.icons['*']).filter(u => u && u.startsWith('data:')))];
+    const others = PACK_RAW.filter(r => slugify(String(r.id || r.name || '')) !== clean.id);
+    const file = { _readme: THEMES_JSON_README, themes: [...others, clean] };
+    const text = JSON.stringify(file, null, 2);
+    const box = $('#mkShare');
+    box.hidden = false;
+    box.innerHTML = `<h3>Add “${esc(clean.name)}” to the site</h3>
+      <ol>
+        <li><button class="tbtn" type="button" data-dl="json">${ic('download')}Download themes.json</button> and put it in <code>assets/themes/</code>, replacing the old one. It already has your other ${others.length} theme${others.length === 1 ? '' : 's'} in it.</li>
+        ${pics.length ? `<li>Put ${pics.length === 1 ? 'this picture' : 'these pictures'} in <code>assets/themes/images/</code>: ${pics.map(u => `<button class="tbtn mk-dlpic" type="button" data-dl="${esc(names.get(u))}">${ic('download')}${esc(names.get(u))}</button>`).join(' ')}</li>` : ''}
+        <li>Commit, push and redeploy. It shows up in the Theme Store for everyone.</li>
+      </ol>
+      <details><summary>Or copy just this theme</summary><textarea readonly rows="10" spellcheck="false">${esc(JSON.stringify(clean, null, 2))}</textarea>
+        <p class="set-note">Paste it inside the <code>"themes": [ … ]</code> list in themes.json, with a comma between themes.</p></details>`;
+    box.onclick = e => {
+      const d = e.target.closest('[data-dl]'); if (!d) return;
+      const a = document.createElement('a');
+      if (d.dataset.dl === 'json') a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })), a.download = 'themes.json';
+      else { const u = pics.find(x => names.get(x) === d.dataset.dl); a.href = u; a.download = d.dataset.dl; }
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+    box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  fill(); preview();
+}
+const THEMES_JSON_README = [
+  'Themes for the Theme Store. Each theme is one { ... } in the "themes" list; put a comma between themes.',
+  'Pictures go in assets/themes/images/ and are written as "images/file.png" (or a full https:// address).',
+  'Only "name" is required. Everything else is optional. The easiest way to make one is the Theme Maker on the site (Theme Store > Make your own).',
+  'Full list of options: assets/themes/README.md'
+];
+
 /* ---------- theme store ---------- */
 function pageStore() {
   setTitle(`Theme Store · ${BRAND}`);
   const list = THEMES.filter(t => t.c);
-  const newCount = list.filter(t => t.store).length;
+  const mine = list.filter(t => t.mine), shop = list.filter(t => t.store && !t.mine), included = list.filter(t => !t.store);
   const owned = list.filter(t => ownsTheme(t.id)).length;
   const button = t => {
     if (resolvedTheme() === t.id && settings.theme !== 'system') return `<button class="ts-btn in-use" disabled>${ic('check')}In use</button>`;
     if (ownsTheme(t.id)) return `<button class="ts-btn use" data-use="${t.id}">Use</button>`;
     return `<button class="ts-btn get" data-get="${t.id}">${ic('bag')}Get</button>`;
   };
-  const card = t => `<article class="ts-card" style="--p:${t.c.paper};--s:${t.c.surface};--k:${t.c.ink};--l:${t.c.line};--sh:${t.c.shadow};--m:${t.c.muted}">
-      <div class="ts-prev" aria-hidden="true">
-        <div class="ts-top"><span class="ts-logo"></span><span class="ts-search"></span></div>
-        <div class="ts-grid">${'<i><em></em><u></u></i>'.repeat(3)}</div>
+  const price = t => t.mine ? 'Yours' : !t.store ? 'Included' : ownsTheme(t.id) ? 'Owned' : (t.price ? `<s>${esc(t.price)}</s> ${STORE_PRICE}` : STORE_PRICE);
+  const card = t => {
+    const im = t.spec?.images || {};
+    let games = im.games; games = (typeof games === 'string' ? [games] : Array.isArray(games) ? games : []).filter(Boolean);
+    const bg = im.background ? `background-image:${cssUrl(im.background)};background-size:${im.backgroundStyle === 'tile' || !im.backgroundStyle ? (numOr(im.backgroundSize, 0) > 0 ? numOr(im.backgroundSize, 0) / 3 + 'px' : 'auto') : 'cover'};` : '';
+    const font = cssFont(t.spec?.font);
+    return `<article class="ts-card" style="--p:${t.c.paper};--s:${t.c.surface};--k:${t.c.ink};--l:${t.c.line};--sh:${t.c.shadow};--m:${t.c.muted};${t.colors?.accent ? `--accent:${t.colors.accent};` : ''}">
+      <div class="ts-prev" aria-hidden="true" style="${esc(bg)}">
+        <div class="ts-top">${im.logo ? `<img class="ts-logo-img" src="${esc(themeUrl(im.logo))}" alt="">` : '<span class="ts-logo"></span>'}<span class="ts-search"></span></div>
+        <div class="ts-grid">${[0, 1, 2].map(i => `<i><em${games.length ? ` style="${esc(`background:${cssUrl(games[i % games.length])} center/cover`)}"` : ''}></em><u></u></i>`).join('')}</div>
       </div>
       <div class="ts-body">
-        <div class="ts-info"><b>${esc(t.name)}</b><small>${esc(t.note)}</small></div>
-        <div class="ts-buy"><span class="ts-price">${t.store ? (ownsTheme(t.id) ? 'Owned' : STORE_PRICE) : 'Included'}</span>
+        <div class="ts-info"><b${font ? ` style="font-family:'${esc(font)}',var(--sans)"` : ''}>${esc(t.name)}</b><small>${esc(t.note)}</small></div>
+        <div class="ts-buy"><span class="ts-price">${price(t)}</span>
           <span class="ts-kind">${t.dark ? 'Dark' : 'Light'}</span>${button(t)}</div>
+        <div class="ts-more">${t.mine ? `<a href="#/make/${t.id}">Edit</a>` : `<a href="#/make/${t.id}">Remix in the Theme Maker</a>`}</div>
       </div></article>`;
+  };
+  const fonts = [...new Set(list.map(t => cssFont(t.spec?.font)).filter(Boolean))];
   app.innerHTML = `
+    ${fonts.length ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fonts.map(f => 'family=' + encodeURIComponent(f).replace(/%20/g, '+')).join('&')}&display=swap">` : ''}
     <section class="banner" style="--c:#1fc7b2"><span class="badge-ico">${ic('bag')}</span>
       <div><div class="label">Every theme is free</div><h1>Theme Store</h1><p>Get a theme and it’s yours on this device. Switch any time here or in Settings.</p></div>
       <div class="total"><b>${owned}/${list.length}</b>owned</div></section>
-    <section class="block">${head(`${newCount} themes to collect`, 'New in the store')}
-      <div class="ts-grid-list">${list.filter(t => t.store).map(card).join('')}</div></section>
+    <a class="ts-make" href="#/make"><span class="badge-ico">${ic('sparkles')}</span><span><b>Make your own theme</b><small>Pick colors, fonts and pictures (backgrounds, logos, cursors, game pictures). No code needed.</small></span>${ic('chevron')}</a>
+    ${mine.length ? `<section class="block">${head('Saved in this browser', 'Made by you')}<div class="ts-grid-list">${mine.map(card).join('')}</div></section>` : ''}
+    <section class="block">${head(`${shop.length} themes to collect`, 'New in the store')}
+      <div class="ts-grid-list">${shop.map(card).join('')}</div></section>
     <section class="block">${head('Came with the site', 'Included')}
-      <div class="ts-grid-list">${list.filter(t => !t.store).map(card).join('')}</div></section>
+      <div class="ts-grid-list">${included.map(card).join('')}</div></section>
     ${footer()}`;
   app.onclick = e => {
     const b = e.target.closest('.ts-btn'); if (!b || b.disabled) return;
@@ -565,7 +970,9 @@ function pageStore() {
       b.disabled = true; b.classList.add('buying'); b.textContent = 'Getting…';
       setTimeout(() => { buyTheme(t.id); toast(`${t.name} is yours. Free!`); pageStore(); }, 550);
     } else if (b.dataset.use) {
-      setSetting('theme', b.dataset.use); toast(`Now using ${THEMES.find(x => x.id === b.dataset.use).name}`); pageStore();
+      const y = scrollY;
+      setSetting('theme', b.dataset.use); toast(`Now using ${THEMES.find(x => x.id === b.dataset.use).name}`);
+      if (location.hash === '#/store') { pageStore(); scrollTo(0, y); }
     }
   };
 }
@@ -580,6 +987,7 @@ function route() {
   renderRail(parts.length ? '#/' + (parts[0] === 'p' ? parts.slice(0, 2) : parts.slice(0, 2)).join('/') : '#/');
   $('#suggest').hidden = true;
   app.onclick = null;   // pages that need a click handler (the Theme Store) set their own
+  if (DRAFT_ON && parts[0] !== 'make') { DRAFT_ON = false; applySettings(); }   // leaving the Theme Maker
   if (player.g && !(parts[0] === 'play' && parts[1] === player.g.slug)) setMode('mini');
   switch (parts[0]) {
     case undefined: pageHome(); break;
@@ -592,6 +1000,7 @@ function route() {
     case 'recent': pageList({ label: 'Your history', title: 'Recently played', sub: 'Saved in this browser only.', icon: 'clock', color: '#57b7ff', games: fromSlugs(recent), key: 'recent' }); break;
     case 'favorites': pageList({ label: 'Your collection', title: 'Favorites', sub: 'Hit the heart on any game to keep it here.', icon: 'heart', color: '#ff6f91', games: fromSlugs([...favs]), key: 'favs' }); break;
     case 'store': pageStore(); break;
+    case 'make': pageMaker(parts[1]); break;
     default: pageNotFound();
   }
   window.scrollTo(0, 0);
@@ -605,7 +1014,7 @@ function wireSearch() {
     const q = input.value.trim().toLowerCase(); sel = -1;
     if (q.length < 2) { box.hidden = true; return; }
     const hits = GAMES.filter(g => g.t.toLowerCase().includes(q)).sort((a, b) => (b.t.toLowerCase().startsWith(q)) - (a.t.toLowerCase().startsWith(q)) || (b.pop || 0) - (a.pop || 0)).slice(0, 7);
-    box.innerHTML = hits.map(g => `<a href="#/play/${g.slug}"><img src="${encPath(g.i)}" alt=""><span>${esc(g.t)}<div class="s-meta">${esc(platLabel(g))}</div></span></a>`).join('') +
+    box.innerHTML = hits.map(g => `<a href="#/play/${g.slug}"><img src="${encPath(gi(g))}" alt=""><span>${esc(g.t)}<div class="s-meta">${esc(platLabel(g))}</div></span></a>`).join('') +
       `<a class="s-all" href="#/search/${encodeURIComponent(input.value.trim())}">See every match for “${esc(input.value.trim())}”</a>`;
     box.hidden = false;
   };
@@ -693,7 +1102,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-3.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-5.</p>
       </div>
     </div>`;
 }
@@ -737,6 +1146,7 @@ function wireSettings() {
 async function boot() {
   $('#brandA').textContent = CONFIG.brand[0]; $('#brandB').textContent = CONFIG.brand[1];
   $('#randomIco').outerHTML = ic('shuffle');
+  await loadThemePacks();
   applySettings();
   // After signing in, the sign-in page swaps this page in without a real page load, and Chrome keeps
   // showing the sign-in icon until the icon <link> is replaced again. Do that once things settle.

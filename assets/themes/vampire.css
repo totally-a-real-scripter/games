@@ -1,0 +1,12 @@
+/* Theme: Vampire. Dark purple and blood red. Spooky season, all year. (Theme Store) */
+:root[data-theme="vampire"]{
+  --paper:#16111c;
+  --paper-2:#1e1726;
+  --surface:#241b2e;
+  --ink:#f4ecff;
+  --line:#4a3560;
+  --shadow-c:#07040a;
+  --muted:#a894c0;
+  --dots:rgba(255,90,120,.06);
+  color-scheme:dark;
+}

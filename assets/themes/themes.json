@@ -1,0 +1,97 @@
+{
+  "_readme": [
+    "Themes for the Theme Store. Each theme is one { ... } in the \"themes\" list; put a comma between themes.",
+    "Pictures go in assets/themes/images/ and are written as \"images/file.png\" (or a full https:// address).",
+    "Only \"name\" is required. Everything else is optional. The easiest way to make one is the Theme Maker on the site (Theme Store > Make your own).",
+    "Full list of options: assets/themes/README.md"
+  ],
+  "themes": [
+    {
+      "id": "potato",
+      "name": "Potato Mode",
+      "note": "Every game is a potato now. You're welcome.",
+      "price": "3 potatoes",
+      "dark": false,
+      "colors": {
+        "background": "#efe0bf",
+        "background2": "#e3cfa3",
+        "card": "#fbf3e1",
+        "text": "#3b2410",
+        "lines": "#3b2410",
+        "shadow": "#3b2410",
+        "muted": "#7a5a3a",
+        "accent": "#d9973f"
+      },
+      "font": "Comic Neue",
+      "images": {
+        "logo": "images/potato-logo.svg",
+        "cursor": "images/potato-cursor.svg",
+        "games": [
+          "images/potato.svg",
+          "images/potato-shocked.svg",
+          "images/potato-cool.svg"
+        ]
+      },
+      "layout": {
+        "radius": 22,
+        "border": 3,
+        "wobble": true
+      }
+    },
+    {
+      "id": "party",
+      "name": "Party Mode",
+      "note": "Confetti everywhere, star icons, and cards that spin.",
+      "price": "1 birthday",
+      "dark": true,
+      "colors": {
+        "background": "#1b0f2e",
+        "background2": "#25143f",
+        "card": "#2c1a4a",
+        "text": "#fff4fb",
+        "lines": "#ff5ab4",
+        "shadow": "#0a0414",
+        "muted": "#c6a8e0",
+        "accent": "#ffd23f"
+      },
+      "font": "Fredoka",
+      "headingFont": "Bangers",
+      "logoText": [
+        "Party",
+        ":time"
+      ],
+      "images": {
+        "background": "images/confetti.svg",
+        "backgroundStyle": "tile",
+        "backgroundSize": 180,
+        "icons": {
+          "*": "images/party-star.svg"
+        }
+      },
+      "layout": {
+        "radius": 18,
+        "spin": true
+      }
+    },
+    {
+      "id": "mirror-world",
+      "name": "Mirror World",
+      "note": "Everything is backwards. Good luck.",
+      "price": "sdnuop 5",
+      "dark": true,
+      "colors": {
+        "background": "#10141f",
+        "background2": "#171d2c",
+        "card": "#1c2334",
+        "text": "#e9eefc",
+        "lines": "#3a4868",
+        "shadow": "#05070c",
+        "muted": "#8e9bbd"
+      },
+      "layout": {
+        "mirror": true,
+        "tilt": -1
+      }
+    }
+  ]
+}

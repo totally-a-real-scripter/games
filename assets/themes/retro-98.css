@@ -1,0 +1,17 @@
+/* Theme: Retro 98. Gray boxes and teal desktop, like an old PC. (Theme Store) */
+:root[data-theme="retro-98"]{
+  --paper:#008080;
+  --paper-2:#c0c0c0;
+  --surface:#c0c0c0;
+  --ink:#000000;
+  --line:#000000;
+  --shadow-c:#000000;
+  --muted:#404040;
+  --dots:transparent;
+  color-scheme:light;
+}
+:root[data-theme="retro-98"]{--r:0px}
+:root[data-theme="retro-98"] body{background-image:none}
+:root[data-theme="retro-98"] .head,:root[data-theme="retro-98"] .block>.label{color:#fff}
+:root[data-theme="retro-98"] .head h2,:root[data-theme="retro-98"] .head .label{color:#fff}
+:root[data-theme="retro-98"] .card,:root[data-theme="retro-98"] .lineup,:root[data-theme="retro-98"] .drop-main,:root[data-theme="retro-98"] .chart-row,:root[data-theme="retro-98"] .ts-card{box-shadow:inset -2px -2px 0 #808080,inset 2px 2px 0 #fff;border-color:#000}

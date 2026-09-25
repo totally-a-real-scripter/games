@@ -1,0 +1,15 @@
+/* Theme: OLED. True black everywhere. Saves battery on OLED screens. (Theme Store) */
+:root[data-theme="oled"]{
+  --paper:#000000;
+  --paper-2:#000000;
+  --surface:#000000;
+  --ink:#ffffff;
+  --line:#262626;
+  --shadow-c:#000000;
+  --muted:#8c8c8c;
+  --dots:transparent;
+  color-scheme:dark;
+}
+:root[data-theme="oled"] .card,:root[data-theme="oled"] .lineup,:root[data-theme="oled"] .drop-main,:root[data-theme="oled"] .chart-row,:root[data-theme="oled"] .banner,:root[data-theme="oled"] .ts-card{box-shadow:none}
+:root[data-theme="oled"] .top{background:#000;backdrop-filter:none}
+:root[data-theme="oled"] body{background-image:none}
