@@ -1303,14 +1303,16 @@ function layoutCheatTab() {
     const cab = $('.cabinet'); if (!cab) show = false;
     else {
       const r = cab.getBoundingClientRect();
-      if (r.bottom < 90 || r.top > innerHeight - 40) show = false;
-      CTAB.ay = Math.max(r.top + 16, 8); CTAB.cabTop = r.top; CTAB.cabH = r.height;
+      // Hide once the top of the game box scrolls up under the sticky header (the tab would float over it).
+      const hb = ($('.top') || { getBoundingClientRect: () => ({ bottom: 0 }) }).getBoundingClientRect().bottom;
+      if (r.top + 16 < hb + 4 || r.top > innerHeight - 40) show = false;
+      CTAB.ay = r.top + 16; CTAB.cabTop = Math.max(r.top, hb + 8); CTAB.cabH = r.bottom - CTAB.cabTop; CTAB.hb = hb;
       if (r.left > 70) { CTAB.side = 'cab'; CTAB.ax = r.left; } else { CTAB.side = 'edge'; CTAB.ax = 0; }
     }
   } else if (show) { CTAB.side = 'edge'; CTAB.ax = 0; CTAB.ay = 76; CTAB.cabTop = 60; CTAB.cabH = innerHeight - 80; }
   if (!show && CHEAT.open && mode !== 'docked' && mode !== 'expanded') toggleCheatPanel(false);
   CTAB.show = show; el.hidden = !show;
-  if (!show) return;
+  if (!show) { if (CHEAT.open && mode === 'docked') placeCheatPanel(); return; }
   el.dataset.side = CTAB.side;
   el.style.top = CTAB.ay + 'px';
   el.style.left = CTAB.side === 'cab' ? (CTAB.ax - 60) + 'px' : '0px';
@@ -1323,7 +1325,7 @@ function placeCheatPanel() {
   const w = Math.min(400, innerWidth - 24);
   const room = CTAB.side === 'cab' && CTAB.ax - 24 >= 240;
   const pw = room ? Math.min(w, CTAB.ax - 24) : w;
-  const top = Math.max(room ? CTAB.cabTop : CTAB.ay + 56, 70);
+  const top = Math.max(room ? CTAB.cabTop : CTAB.ay + 56, player.mode === 'expanded' ? 70 : (CTAB.hb || 70) + 8);
   p.dataset.side = room ? 'cab' : 'edge';
   Object.assign(p.style, { width: pw + 'px', top: top + 'px', left: (room ? CTAB.ax - 12 - pw : 12) + 'px',
     maxHeight: Math.max(240, Math.min(innerHeight - top - 12, room ? Math.max(CTAB.cabH, 420) : innerHeight)) + 'px' });
@@ -1685,7 +1687,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-11.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-12.</p>
       </div>
     </div>`;
 }
