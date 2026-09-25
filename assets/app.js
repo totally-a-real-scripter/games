@@ -37,10 +37,20 @@ const PLATFORMS = [
 /* ---------- themes & settings ----------
    To add a theme: drop a CSS file in assets/themes/ and add it here (see assets/themes/README.md). */
 const THEMES = [
-  { id: 'black', name: 'Black', note: 'Deep black with bright accents. The default.', swatch: ['#0b0b0c', '#18181b', '#f2f0ea'] },
-  { id: 'paper', name: 'Paper', note: 'Warm off-white with bold ink outlines.', swatch: ['#f4efe6', '#fffaf1', '#17130f'] },
-  { id: 'system', name: 'Match device', note: 'Black or Paper, following your device setting.', swatch: ['#0b0b0c', '#f4efe6', '#ffc93c'] }
+  { id: 'black', name: 'Black', note: 'Deep black with bright accents. The default.', swatch: ['#0b0b0c', '#18181b', '#f2f0ea'], dark: true, c: { paper: '#0b0b0c', surface: '#18181b', ink: '#f2f0ea', line: '#34343a', shadow: '#000000', muted: '#9a9aa3' } },
+  { id: 'paper', name: 'Paper', note: 'Warm off-white with bold ink outlines.', swatch: ['#f4efe6', '#fffaf1', '#17130f'], dark: false, c: { paper: '#f4efe6', surface: '#fffaf1', ink: '#17130f', line: '#17130f', shadow: '#17130f', muted: '#6f655a' } },
+  { id: 'system', name: 'Match device', note: 'Black or Paper, following your device setting.', swatch: ['#0b0b0c', '#f4efe6', '#ffc93c'] },
+  // Theme Store themes (store: true): hidden in Settings until "bought" in the store (#/store). They're all free.
+  { id: 'midnight', name: 'Midnight', note: 'Deep navy blue, like a late-night study session.', swatch: ['#0d1321', '#18223a', '#e8ecf6'], store: true, dark: true, c: { paper: '#0d1321', surface: '#18223a', ink: '#e8ecf6', line: '#2c3a5c', shadow: '#05080f', muted: '#8b97b3' } },
+  { id: 'forest', name: 'Forest', note: 'Dark pine greens with soft moss text.', swatch: ['#0e1712', '#19281f', '#e7f0e6'], store: true, dark: true, c: { paper: '#0e1712', surface: '#19281f', ink: '#e7f0e6', line: '#2d4435', shadow: '#050a07', muted: '#8fa596' } },
+  { id: 'mocha', name: 'Mocha', note: 'Warm coffee browns. Cozy.', swatch: ['#1a1411', '#2a211c', '#f3e9df'], store: true, dark: true, c: { paper: '#1a1411', surface: '#2a211c', ink: '#f3e9df', line: '#4a3a31', shadow: '#0c0806', muted: '#b09c8c' } },
+  { id: 'slate', name: 'Slate', note: 'Calm, cool grays that are easy on the eyes.', swatch: ['#1e2226', '#2c3238', '#eceff2'], store: true, dark: true, c: { paper: '#1e2226', surface: '#2c3238', ink: '#eceff2', line: '#444c55', shadow: '#111417', muted: '#9aa4ad' } },
+  { id: 'terminal', name: 'Terminal', note: 'Green-on-black hacker mode, all in monospace.', swatch: ['#000000', '#07150b', '#7dff9b'], store: true, dark: true, c: { paper: '#000000', surface: '#07150b', ink: '#7dff9b', line: '#1f5a2d', shadow: '#000000', muted: '#3fae5c' } },
+  { id: 'arcade', name: 'Arcade', note: 'Neon pink outlines on deep purple.', swatch: ['#140a24', '#231440', '#fbeaff'], store: true, dark: true, c: { paper: '#140a24', surface: '#231440', ink: '#fbeaff', line: '#ff4fd8', shadow: '#05010c', muted: '#b69bd6' } },
+  { id: 'candy', name: 'Candy', note: 'Bubblegum pink with bold outlines.', swatch: ['#fff0f6', '#fffafc', '#3a1030'], store: true, dark: false, c: { paper: '#fff0f6', surface: '#fffafc', ink: '#3a1030', line: '#3a1030', shadow: '#3a1030', muted: '#8a5a78' } },
+  { id: 'seafoam', name: 'Seafoam', note: 'Light, breezy blue-greens.', swatch: ['#e9f6f4', '#f7fdfc', '#0d2b33'], store: true, dark: false, c: { paper: '#e9f6f4', surface: '#f7fdfc', ink: '#0d2b33', line: '#0d2b33', shadow: '#0d2b33', muted: '#4f6f75' } }
 ];
+const STORE_PRICE = 'FREE';
 const ACCENTS = [['mustard', '#ffc93c'], ['tomato', '#ff5a36'], ['teal', '#1fc7b2'], ['lilac', '#b39cff'], ['sky', '#57b7ff'], ['lime', '#b8e05a'], ['pink', '#ff8ad8']];
 const SETTINGS_DEFAULTS = { theme: 'black', accent: 'mustard', size: 'm', names: true, motion: true, autostart: false, newtab: false, autoblank: false, cloak: 'off', customCloak: null };
 
@@ -101,7 +111,9 @@ Object.assign(ICONS, {
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   download: '<path d="M12 3.5v11.5M7 10.5l5 5 5-5"/><path d="M4 16.5V19a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-2.5"/>',
   shrink: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
-  lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'
+  lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+  bag: '<path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
+  check: '<path d="M5 12.5 10 17.5 19.5 7"/>'
 });
 const ic = name => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.gamepad}</svg>`;
 
@@ -115,9 +127,13 @@ const store = {
 };
 
 const settings = Object.assign({}, SETTINGS_DEFAULTS, store.get('sig:settings', {}));
+/* Themes "bought" in the Theme Store, saved on this device. Themes without store: true are always owned. */
+const ownedThemes = new Set(store.get('sig:themes', []));
+const ownsTheme = id => { const t = THEMES.find(x => x.id === id); return !!t && (!t.store || ownedThemes.has(id)); };
+function buyTheme(id) { ownedThemes.add(id); store.set('sig:themes', [...ownedThemes]); }
 function resolvedTheme() {
   const t = settings.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'black') : settings.theme;
-  return THEMES.some(x => x.id === t && t !== 'system') ? t : 'black';
+  return t !== 'system' && ownsTheme(t) ? t : 'black';
 }
 function applySettings() {
   const h = document.documentElement, t = resolvedTheme();
@@ -254,6 +270,7 @@ function renderRail(active) {
     pill('#/popular', 'flame', '#ff5a36', 'Popular') +
     pill('#/recent', 'clock', '#57b7ff', 'Recent') +
     pill('#/favorites', 'heart', '#ff6f91', 'Favorites') +
+    pill('#/store', 'bag', '#1fc7b2', 'Theme Store') +
     '<span class="sep"></span>' +
     PLATFORMS.map(([n, i, c, label]) => pill('#/p/' + slugify(n), i, c, label)).join('') +
     '<span class="sep"></span>' +
@@ -274,7 +291,7 @@ function pageHome() {
     <section class="drop">
       <a class="drop-main" href="#/play/${top.slug}">
         <div class="art"><img src="${encPath(top.i)}" alt=""></div>
-        <span class="stamp"><small>DAY ${dayOfYear()}</small><b>${month} ${d.getDate()}</b><small>GAME OF THE DAY</small></span>
+        <span class="stamp"><small>GAME OF THE DAY</small><b>${month} ${d.getDate()}</b></span>
         <div class="body">
           <div><div class="label">Daily Drop · ${esc(platLabel(top))}</div><h1>${esc(top.t)}</h1></div>
           <span class="go">${ic('play')}Play</span>
@@ -511,6 +528,47 @@ function pagePlay(slug) {
   $('#favBtn').onclick = e => { toggleFav(slug); e.currentTarget.classList.toggle('on', favs.has(slug)); };
   setTitle(`${g.t} · ${BRAND}`);
 }
+/* ---------- theme store ---------- */
+function pageStore() {
+  setTitle(`Theme Store · ${BRAND}`);
+  const list = THEMES.filter(t => t.c);
+  const newCount = list.filter(t => t.store).length;
+  const owned = list.filter(t => ownsTheme(t.id)).length;
+  const button = t => {
+    if (resolvedTheme() === t.id && settings.theme !== 'system') return `<button class="ts-btn in-use" disabled>${ic('check')}In use</button>`;
+    if (ownsTheme(t.id)) return `<button class="ts-btn use" data-use="${t.id}">Use</button>`;
+    return `<button class="ts-btn get" data-get="${t.id}">${ic('bag')}Get</button>`;
+  };
+  const card = t => `<article class="ts-card" style="--p:${t.c.paper};--s:${t.c.surface};--k:${t.c.ink};--l:${t.c.line};--sh:${t.c.shadow};--m:${t.c.muted}">
+      <div class="ts-prev" aria-hidden="true">
+        <div class="ts-top"><span class="ts-logo"></span><span class="ts-search"></span></div>
+        <div class="ts-grid">${'<i><em></em><u></u></i>'.repeat(3)}</div>
+      </div>
+      <div class="ts-body">
+        <div class="ts-info"><b>${esc(t.name)}</b><small>${esc(t.note)}</small></div>
+        <div class="ts-buy"><span class="ts-price">${t.store ? (ownsTheme(t.id) ? 'Owned' : STORE_PRICE) : 'Included'}</span>
+          <span class="ts-kind">${t.dark ? 'Dark' : 'Light'}</span>${button(t)}</div>
+      </div></article>`;
+  app.innerHTML = `
+    <section class="banner" style="--c:#1fc7b2"><span class="badge-ico">${ic('bag')}</span>
+      <div><div class="label">Every theme is free</div><h1>Theme Store</h1><p>Get a theme and it’s yours on this device. Switch any time here or in Settings.</p></div>
+      <div class="total"><b>${owned}/${list.length}</b>owned</div></section>
+    <section class="block">${head(`${newCount} themes to collect`, 'New in the store')}
+      <div class="ts-grid-list">${list.filter(t => t.store).map(card).join('')}</div></section>
+    <section class="block">${head('Came with the site', 'Included')}
+      <div class="ts-grid-list">${list.filter(t => !t.store).map(card).join('')}</div></section>
+    ${footer()}`;
+  app.onclick = e => {
+    const b = e.target.closest('.ts-btn'); if (!b || b.disabled) return;
+    if (b.dataset.get) {
+      const t = THEMES.find(x => x.id === b.dataset.get);
+      b.disabled = true; b.classList.add('buying'); b.textContent = 'Getting…';
+      setTimeout(() => { buyTheme(t.id); toast(`${t.name} is yours. Free!`); pageStore(); }, 550);
+    } else if (b.dataset.use) {
+      setSetting('theme', b.dataset.use); toast(`Now using ${THEMES.find(x => x.id === b.dataset.use).name}`); pageStore();
+    }
+  };
+}
 function pageNotFound() {
   app.innerHTML = `<div class="empty"><b>That page doesn't exist</b><a class="see" href="#/" style="margin-top:14px">Back home${ic('chevron')}</a></div>`;
 }
@@ -521,6 +579,7 @@ function route() {
   setTitle(`${BRAND} · Free Online Games`);
   renderRail(parts.length ? '#/' + (parts[0] === 'p' ? parts.slice(0, 2) : parts.slice(0, 2)).join('/') : '#/');
   $('#suggest').hidden = true;
+  app.onclick = null;   // pages that need a click handler (the Theme Store) set their own
   if (player.g && !(parts[0] === 'play' && parts[1] === player.g.slug)) setMode('mini');
   switch (parts[0]) {
     case undefined: pageHome(); break;
@@ -532,6 +591,7 @@ function route() {
     case 'today': case 'new': { const d = dailyDrop(); pageList({ label: 'Changes every day', title: 'Daily Drop', sub: "Today's Game of the Day, lineup and fresh picks, all in one place.", icon: 'sparkles', color: '#ffc93c', games: [d.top, ...d.lineup, ...d.fresh], key: 'drop' }); break; }
     case 'recent': pageList({ label: 'Your history', title: 'Recently played', sub: 'Saved in this browser only.', icon: 'clock', color: '#57b7ff', games: fromSlugs(recent), key: 'recent' }); break;
     case 'favorites': pageList({ label: 'Your collection', title: 'Favorites', sub: 'Hit the heart on any game to keep it here.', icon: 'heart', color: '#ff6f91', games: fromSlugs([...favs]), key: 'favs' }); break;
+    case 'store': pageStore(); break;
     default: pageNotFound();
   }
   window.scrollTo(0, 0);
@@ -591,8 +651,9 @@ function renderSettings() {
       <button class="tbtn icon-only" data-close title="Close">${ic('close')}</button></div>
     <div class="set-body">
       <div class="set-group"><span class="label">Theme</span>
-        <div class="themes">${THEMES.map(t => `<button class="theme-opt" data-theme-id="${t.id}" aria-pressed="${settings.theme === t.id}">
+        <div class="themes">${THEMES.filter(t => ownsTheme(t.id)).map(t => `<button class="theme-opt" data-theme-id="${t.id}" aria-pressed="${settings.theme === t.id}">
           <span class="sw">${t.swatch.map(c => `<i style="background:${c}"></i>`).join('')}</span><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`).join('')}</div>
+        <p class="set-note">${THEMES.some(t => t.store && !ownsTheme(t.id)) ? 'Want more?' : 'You own every theme.'} <a class="ts-link" href="#/store" data-close>${ic('bag')}Theme Store</a> (every theme is free)</p>
       </div>
       <div class="set-group"><span class="label">Tab cloak</span>
         <div class="cloaks">${CLOAKS.map(c => `<button class="cloak-opt" data-cloak-id="${c.id}" aria-pressed="${settings.cloak === c.id}">
@@ -632,7 +693,7 @@ function renderSettings() {
           <button class="tbtn" data-clear="settings">${ic('restart')}Reset settings</button>
           <a class="tbtn" href="/logout">${ic('lock')}Sign out</a>
         </div>
-        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-23-8.</p>
+        <p class="set-note">Settings, favorites and history are stored in this browser only. Nothing is sent to a server. Site version 2026-09-24-3.</p>
       </div>
     </div>`;
 }

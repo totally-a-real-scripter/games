@@ -1,0 +1,12 @@
+/* Theme: Slate. Calm, cool grays that are easy on the eyes. (Theme Store) */
+:root[data-theme="slate"]{
+  --paper:#1e2226;
+  --paper-2:#262b30;
+  --surface:#2c3238;
+  --ink:#eceff2;
+  --line:#444c55;
+  --shadow-c:#111417;
+  --muted:#9aa4ad;
+  --dots:rgba(255,255,255,.05);
+  color-scheme:dark;
+}

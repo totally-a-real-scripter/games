@@ -1,0 +1,15 @@
+/* Theme: Terminal. Green-on-black hacker mode, all in monospace. (Theme Store) */
+:root[data-theme="terminal"]{
+  --paper:#000000;
+  --paper-2:#04100a;
+  --surface:#07150b;
+  --ink:#7dff9b;
+  --line:#1f5a2d;
+  --shadow-c:#000000;
+  --muted:#3fae5c;
+  --dots:rgba(125,255,155,.07);
+  color-scheme:dark;
+}
+:root[data-theme="terminal"]{--sans:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+:root[data-theme="terminal"] h1,:root[data-theme="terminal"] h2{text-shadow:0 0 12px rgba(125,255,155,.35)}
+:root[data-theme="terminal"] body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:999;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}

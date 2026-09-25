@@ -1,0 +1,12 @@
+/* Theme: Candy. Bubblegum pink with bold outlines. (Theme Store) */
+:root[data-theme="candy"]{
+  --paper:#fff0f6;
+  --paper-2:#ffe1ee;
+  --surface:#fffafc;
+  --ink:#3a1030;
+  --line:#3a1030;
+  --shadow-c:#3a1030;
+  --muted:#8a5a78;
+  --dots:rgba(58,16,48,.08);
+  color-scheme:light;
+}

@@ -13,3 +13,11 @@ swap fonts (`--sans`, `--mono`), corner radius (`--r`), border width (`--bw`), o
 (`.card`, `.drop`, `.top`, `.rail`, `.cabinet`, …) without affecting other themes.
 The `<html>` element also carries the visitor's other settings as attributes
 (`data-accent`, `data-size`, `data-names`, `data-motion`), so a theme can react to those too.
+
+## Theme Store
+
+Themes with `store: true` in `THEMES` only show up in Settings after they're "bought" (for free) on the
+Theme Store page (`#/store`). Owned themes are saved in this browser under `sig:themes`.
+For the store preview card, also give the theme a `c: { paper, surface, ink, line, shadow, muted }` object
+with the same colors as its CSS file, and `dark: true/false`. Leave out `store: true` to make a theme free
+for everyone without visiting the store.

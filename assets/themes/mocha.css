@@ -1,0 +1,12 @@
+/* Theme: Mocha. Warm coffee browns. Cozy. (Theme Store) */
+:root[data-theme="mocha"]{
+  --paper:#1a1411;
+  --paper-2:#231b17;
+  --surface:#2a211c;
+  --ink:#f3e9df;
+  --line:#4a3a31;
+  --shadow-c:#0c0806;
+  --muted:#b09c8c;
+  --dots:rgba(255,220,190,.06);
+  color-scheme:dark;
+}

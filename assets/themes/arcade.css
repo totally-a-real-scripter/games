@@ -1,0 +1,13 @@
+/* Theme: Arcade. Neon pink outlines on deep purple. (Theme Store) */
+:root[data-theme="arcade"]{
+  --paper:#140a24;
+  --paper-2:#1d1033;
+  --surface:#231440;
+  --ink:#fbeaff;
+  --line:#ff4fd8;
+  --shadow-c:#05010c;
+  --muted:#b69bd6;
+  --dots:rgba(255,79,216,.08);
+  color-scheme:dark;
+}
+:root[data-theme="arcade"] .card,:root[data-theme="arcade"] .lineup,:root[data-theme="arcade"] .drop-main,:root[data-theme="arcade"] .chart-row{box-shadow:4px 4px 0 #05010c,0 0 18px rgba(255,79,216,.18)}

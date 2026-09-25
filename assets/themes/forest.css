@@ -1,0 +1,12 @@
+/* Theme: Forest. Dark pine greens with soft moss text. (Theme Store) */
+:root[data-theme="forest"]{
+  --paper:#0e1712;
+  --paper-2:#142019;
+  --surface:#19281f;
+  --ink:#e7f0e6;
+  --line:#2d4435;
+  --shadow-c:#050a07;
+  --muted:#8fa596;
+  --dots:rgba(150,220,170,.06);
+  color-scheme:dark;
+}

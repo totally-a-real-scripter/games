@@ -97,8 +97,8 @@ svg.i .dot{fill:currentColor;stroke:none}
 .drop-main .body{display:flex;align-items:center;gap:18px;padding:16px 20px}
 .drop-main h1{margin:4px 0 0;font-size:clamp(24px,3vw,38px);font-weight:700;letter-spacing:-1.2px;line-height:1}
 .drop-main .tags{margin-top:8px}
-.stamp{position:absolute;top:16px;left:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;width:98px;height:98px;border-radius:50%;background:var(--tomato);color:#fff;border:var(--bw) solid #17130f;box-shadow:3px 3px 0 #17130f;transform:rotate(-12deg);text-align:center;font-family:var(--mono);font-weight:700;line-height:1.05}
-.stamp small{font-size:9.5px;letter-spacing:1px}
+.stamp{position:absolute;top:16px;left:16px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:9px 14px 10px;border-radius:10px;background:var(--accent);color:#17130f;border:var(--bw) solid #17130f;box-shadow:3px 3px 0 #17130f;font-family:var(--mono);font-weight:700;line-height:1}
+.stamp small{font-size:10.5px;letter-spacing:1.2px;opacity:.92}
 .stamp b{font-size:26px;letter-spacing:-1px}
 .go{margin-left:auto;display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 22px;border:var(--bw) solid #17130f;border-radius:999px;background:var(--accent);color:#17130f;font-weight:700;font-size:16px;box-shadow:3px 3px 0 #17130f;white-space:nowrap;transition:transform .1s,box-shadow .1s}
 .go svg.i{width:18px;height:18px;fill:currentColor;stroke:none}
@@ -225,7 +225,7 @@ svg.i .dot{fill:currentColor;stroke:none}
   .head h2{font-size:24px}
   .drop-main .body{flex-wrap:wrap}
   .go{margin-left:0}
-  .stamp{width:78px;height:78px}.stamp b{font-size:20px}
+  .stamp{top:12px;left:12px;padding:7px 11px 8px}.stamp small{font-size:9.5px}.stamp b{font-size:20px}
   .lineup img{width:84px}
   .banner{flex-wrap:wrap}
   .banner .total{margin-left:0;text-align:left}
@@ -345,3 +345,34 @@ body.stage-open{overflow:hidden}
   .stage-dock .tbtn span{display:none}
   .stage-dock .tbtn{width:40px;padding:0;justify-content:center}
 }
+
+/* ---------- theme store (#/store) ----------
+   Each card previews its theme with inline vars: --p paper, --s surface, --k ink, --l line, --sh shadow, --m muted. */
+.ts-grid-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.ts-card{display:flex;flex-direction:column;border:var(--bw) solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:5px 5px 0 var(--shadow-c)}
+.ts-prev{padding:12px;background:var(--p);background-image:radial-gradient(color-mix(in srgb,var(--k) 9%,transparent) 1px,transparent 1.2px);background-size:12px 12px;border-bottom:var(--bw) solid var(--line)}
+.ts-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ts-logo{width:40px;height:14px;border-radius:4px;background:var(--accent);border:1.5px solid var(--l);transform:rotate(-3deg)}
+.ts-search{flex:1;height:14px;border-radius:99px;background:var(--s);border:1.5px solid var(--l)}
+.ts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ts-grid i{display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:7px;background:var(--s);border:1.5px solid var(--l);box-shadow:2px 2px 0 var(--sh)}
+.ts-grid em{display:block;aspect-ratio:16/10;border-radius:4px;background:color-mix(in srgb,var(--m) 35%,var(--s))}
+.ts-grid u{display:block;height:5px;width:70%;border-radius:3px;background:var(--k)}
+.ts-grid i:first-child em{background:color-mix(in srgb,var(--accent) 70%,var(--s))}
+.ts-body{display:flex;flex-direction:column;gap:12px;padding:14px 16px 16px;flex:1}
+.ts-info b{display:block;font-size:19px;letter-spacing:-.4px}
+.ts-info small{display:block;color:var(--muted);font-size:13.5px;line-height:1.35;margin-top:2px}
+.ts-buy{display:flex;align-items:center;gap:8px;margin-top:auto}
+.ts-price{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:4px 9px;border-radius:7px;background:color-mix(in srgb,var(--teal) 22%,var(--surface));border:1.5px solid var(--line)}
+.ts-kind{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.ts-btn{margin-left:auto;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border:var(--bw) solid var(--line);border-radius:999px;background:var(--surface);font-weight:700;font-size:14px;box-shadow:3px 3px 0 var(--shadow-c);transition:transform .1s,box-shadow .1s;white-space:nowrap}
+.ts-btn svg.i{width:17px;height:17px}
+.ts-btn.get{background:var(--accent);color:#17130f;border-color:#17130f;box-shadow:3px 3px 0 #17130f}
+.ts-btn:not([disabled]):hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--shadow-c)}
+.ts-btn.get:not([disabled]):hover{box-shadow:4px 4px 0 #17130f}
+.ts-btn:not([disabled]):active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow-c)}
+.ts-btn.in-use{box-shadow:none;border-style:dashed;color:var(--muted);cursor:default}
+.ts-btn.buying{opacity:.8;cursor:progress}
+.ts-link{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.ts-link svg.i{width:15px;height:15px}
+:root[data-motion="off"] .ts-btn{transition:none}

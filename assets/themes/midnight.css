@@ -1,0 +1,12 @@
+/* Theme: Midnight. Deep navy blue, like a late-night study session. (Theme Store) */
+:root[data-theme="midnight"]{
+  --paper:#0d1321;
+  --paper-2:#141c2f;
+  --surface:#18223a;
+  --ink:#e8ecf6;
+  --line:#2c3a5c;
+  --shadow-c:#05080f;
+  --muted:#8b97b3;
+  --dots:rgba(140,170,255,.07);
+  color-scheme:dark;
+}

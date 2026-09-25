@@ -1,0 +1,12 @@
+/* Theme: Seafoam. Light, breezy blue-greens. (Theme Store) */
+:root[data-theme="seafoam"]{
+  --paper:#e9f6f4;
+  --paper-2:#d8eeea;
+  --surface:#f7fdfc;
+  --ink:#0d2b33;
+  --line:#0d2b33;
+  --shadow-c:#0d2b33;
+  --muted:#4f6f75;
+  --dots:rgba(13,43,51,.08);
+  color-scheme:light;
+}
