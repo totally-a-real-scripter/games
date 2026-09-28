@@ -17,9 +17,9 @@ else
   echo "40-site-password: password protection is on."
 fi
 
-# The 64-character token needs map_hash_bucket_size >= 128. nginx refuses to start if the setting
-# appears twice, so only add it when the main config doesn't already set it (Alpine's nginx.conf
-# does; the combined image removes that line at build time, see Dockerfile).
+# The 64-character token needs map_hash_bucket_size >= 128. nginx only accepts that setting before
+# the first "map" anywhere in the config, so when the main nginx.conf already sets it (the combined
+# image puts it at the top of Alpine's http block, see Dockerfile), don't repeat it here.
 BUCKET='map_hash_bucket_size 128;'
 if grep -Eqs '^[[:space:]]*map_hash_bucket_size' "${NGINX_MAIN_CONF:-/etc/nginx/nginx.conf}"; then
   BUCKET='# map_hash_bucket_size is set in the main nginx.conf'

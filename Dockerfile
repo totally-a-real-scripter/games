@@ -12,14 +12,11 @@ RUN npx tsc -p tsconfig.json
 
 # ---- runtime: Node for the proxy + nginx for the site ----
 FROM node:22-alpine
-# Alpine's nginx.conf sets map_hash_bucket_size too small for the password token; drop it so the
-# password script sets 128 (nginx won't start if it's set twice). Logs go to the container output.
+# nginx from Alpine's packages, with our own main config (docker/nginx-main.conf) replacing Alpine's.
 RUN apk add --no-cache nginx su-exec \
  && rm -f /etc/nginx/http.d/default.conf \
- && sed -i '/map_hash_bucket_size/d' /etc/nginx/nginx.conf \
- && ln -sf /dev/stdout /var/log/nginx/access.log \
- && ln -sf /dev/stderr /var/log/nginx/error.log \
  && mkdir -p /run/nginx
+COPY docker/nginx-main.conf /etc/nginx/nginx.conf
 
 # nginx config (port 3847) and the start-up scripts.
 # (sed strips Windows line endings, which would break the scripts.)
