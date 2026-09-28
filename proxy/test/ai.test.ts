@@ -4,7 +4,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
-import { validateMessages, resetMs, failureMessage, AiService } from '../src/ai/chat.js';
+import { validateMessages, resetMs, failureMessage, AiService, bestFreeModel } from '../src/ai/chat.js';
 import type { AiConfig } from '../src/config.js';
 
 // Mocks below don't serve GET /models; the startup check has its own tests.
@@ -480,4 +480,10 @@ describe('keeping API usage low', () => {
     assert.equal(lastMessages[1].role, 'user');
     assert.equal(lastMessages.at(-1).content, 'turn 10');
   });
+});
+
+test('fallback free model prefers well-known chat models', () => {
+  assert.equal(bestFreeModel(['inclusionai/ling-3.0-flash-sante:free', 'qwen/qwen3-coder:free', 'meta-llama/llama-3.3-70b-instruct:free']), 'meta-llama/llama-3.3-70b-instruct:free');
+  assert.equal(bestFreeModel(['inclusionai/ling-3.0-flash-sante:free', 'google/gemma-3-27b-it:free']), 'google/gemma-3-27b-it:free');
+  assert.equal(bestFreeModel(['inclusionai/ling-3.0-flash-sante:free', 'x/paid-model']), 'inclusionai/ling-3.0-flash-sante:free');
 });

@@ -222,7 +222,7 @@ export class AiService {
 
     const sample = ids.filter((i) => !p.presetId || p.presetId !== 'openrouter' || i.endsWith(':free')).slice(0, 12).join(', ');
     if (!p.explicitModel) {
-      const pick = p.preferred.map((m) => (m === '*:free' ? ids.find((i) => i.endsWith(':free')) : has(m) ? m : undefined)).find(Boolean);
+      const pick = p.preferred.map((m) => (m === '*:free' ? bestFreeModel(ids) : has(m) ? m : undefined)).find(Boolean);
       if (pick) {
         this.models.set(p.id, pick);
         return { ok: true, hint: `Default model "${model}" isn't offered anymore; using "${pick}" instead.` };
@@ -458,6 +458,21 @@ export class AiService {
       overall.removeEventListener('abort', onAbort);
     }
   }
+}
+
+/**
+ * Choose a sensible free model when none of the preferred ones is offered:
+ * well-known general chat families first (larger variants first), then any
+ * ":free" model, skipping ones built for code, vision or safety filtering.
+ */
+export function bestFreeModel(ids: string[]): string | undefined {
+  const free = ids.filter((i) => i.endsWith(':free') && !/coder|code|vision|-vl|guard|embed|audio|image/i.test(i));
+  const families = [/gpt-oss-120b/, /llama-3\.3-70b/, /deepseek-(chat|v3)/, /qwen3?-.*(235b|72b|32b)/, /gemma-3-27b/, /mistral-(small|medium|nemo)/, /llama-3\.[12]-.*(70b|8b)/, /gpt-oss/, /qwen/, /gemma/, /llama/, /mistral/];
+  for (const f of families) {
+    const hit = free.find((i) => f.test(i.toLowerCase()));
+    if (hit) return hit;
+  }
+  return free[0] ?? ids.find((i) => i.endsWith(':free'));
 }
 
 /** Decide how long a failed provider should rest, from its HTTP status and headers. */
