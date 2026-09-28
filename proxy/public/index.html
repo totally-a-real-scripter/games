@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#07080c">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="same-origin">
+<title>Veil</title>
+<link rel="icon" href="/__px/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/__px/static/app.css?v=12">
+<script src="/__px/static/app.js?v=12" defer></script>
+<script src="/__px/static/ai.js?v=12" defer></script>
+</head>
+<body class="view-home">
+<div class="backdrop" aria-hidden="true">
+  <div class="aurora a1"></div>
+  <div class="aurora a2"></div>
+  <div class="aurora a3"></div>
+  <canvas id="field"></canvas>
+  <div class="spotlight"></div>
+</div>
+
+<!-- Browsing toolbar -->
+<!-- Browser view (home + proxied pages) -->
+<div class="view main-view" id="main-view">
+<header class="toolbar glass" id="toolbar">
+  <nav class="nav-buttons" aria-label="Page navigation">
+    <button class="icon-btn" id="btn-back" type="button" aria-label="Back" title="Back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button class="icon-btn" id="btn-forward" type="button" aria-label="Forward" title="Forward">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <button class="icon-btn" id="btn-reload" type="button" aria-label="Reload" title="Reload">
+      <svg class="i-reload" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
+      <svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <button class="icon-btn hide-sm" id="btn-home" type="button" aria-label="Home" title="Home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
+    </button>
+  </nav>
+
+  <form class="address" id="address-form" action="/__px/go" method="get" role="search" autocomplete="off">
+    <span class="scheme" id="scheme-icon" aria-hidden="true">
+      <svg class="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <svg class="i-open" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>
+      <svg class="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+    </span>
+    <label class="sr-only" for="address-input">Address or search</label>
+    <input id="address-input" name="q" type="text" inputmode="url" spellcheck="false" autocapitalize="off"
+           placeholder="Search or enter address" enterkeyhint="go">
+  </form>
+
+  <div class="tool-actions">
+    <button class="icon-btn ai-btn" id="btn-ai" type="button" aria-label="Open AI assistant" title="AI assistant" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+    </button>
+    <button class="icon-btn hide-sm" id="btn-newtab" type="button" aria-label="Open page in a new tab" title="Open in new tab">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+    </button>
+    <div class="menu-wrap">
+      <button class="icon-btn" id="btn-menu" type="button" aria-label="More options" aria-haspopup="menu" aria-expanded="false" title="More">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="18.5" r="1.3"/></svg>
+      </button>
+      <div class="menu glass" id="menu" role="menu" hidden>
+        <button type="button" role="menuitem" data-action="home" class="show-sm">Home</button>
+        <button type="button" role="menuitem" data-action="newtab" class="show-sm">Open in new tab</button>
+        <button type="button" role="menuitem" data-action="copy">Copy page address</button>
+        <button type="button" role="menuitem" data-action="clear" class="danger">Clear session data</button>
+      </div>
+    </div>
+  </div>
+  <div class="progress" id="progress" aria-hidden="true"><span></span></div>
+</header>
+
+<!-- Landing -->
+<main class="home" id="home">
+  <div class="home-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c9d3ff"/><stop offset="1" stop-color="#6f86ff"/></linearGradient></defs>
+        <path d="M6 7c3.5 0 6 2 10 12 4-10 6.5-12 10-12" fill="none" stroke="url(#bm)" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M9 25h14" stroke="url(#bm)" stroke-width="2.6" stroke-linecap="round" opacity=".55"/>
+      </svg>
+      <h1>Veil</h1>
+    </div>
+    <p class="tagline">Browse anywhere, quietly.</p>
+
+    <form class="hero-search spot" id="hero-form" action="/__px/go" method="get" role="search" autocomplete="off">
+      <svg class="hero-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+      <label class="sr-only" for="hero-input">Search or enter a web address</label>
+      <input id="hero-input" name="q" type="text" inputmode="url" spellcheck="false" autocapitalize="off" autofocus
+             placeholder="Search or enter a web address" enterkeyhint="go" aria-describedby="hero-hint">
+      <kbd class="kbd" id="hero-kbd" aria-hidden="true">/</kbd>
+      <button class="go-btn" type="submit" aria-label="Go">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+    <p class="hero-hint" id="hero-hint" aria-live="polite">&nbsp;</p>
+
+    <ul class="tiles" aria-label="Quick links">
+      <li><a class="tile spot" href="/p/https/www.youtube.com/" data-go="https://www.youtube.com/">
+        <span class="tile-icon" data-letter="Y"><img alt="" data-src="/p/https/www.youtube.com/favicon.ico"></span>
+        <span class="tile-name">YouTube</span><span class="tile-host">youtube.com</span></a></li>
+      <li><a class="tile spot" href="/p/https/www.reddit.com/" data-go="https://www.reddit.com/">
+        <span class="tile-icon" data-letter="R"><img alt="" data-src="/p/https/www.reddit.com/favicon.ico"></span>
+        <span class="tile-name">Reddit</span><span class="tile-host">reddit.com</span></a></li>
+      <li><a class="tile spot" href="/p/https/github.com/" data-go="https://github.com/">
+        <span class="tile-icon" data-letter="G"><img alt="" data-src="/p/https/github.com/favicon.ico"></span>
+        <span class="tile-name">GitHub</span><span class="tile-host">github.com</span></a></li>
+      <li><a class="tile spot" href="/p/https/www.twitch.tv/" data-go="https://www.twitch.tv/">
+        <span class="tile-icon" data-letter="T"><img alt="" data-src="/p/https/www.twitch.tv/favicon.ico"></span>
+        <span class="tile-name">Twitch</span><span class="tile-host">twitch.tv</span></a></li>
+    </ul>
+
+    <p class="fineprint">
+      <span class="dot-ok" aria-hidden="true"></span>
+      Private networks blocked&nbsp;&middot;&nbsp;Cookies stay on the server
+    </p>
+  </div>
+</main>
+
+<!-- Page viewport -->
+<section class="viewport" id="viewport" aria-label="Page">
+  <iframe id="frame" title="Proxied page" referrerpolicy="same-origin"></iframe>
+</section>
+
+<!-- AI assistant entry -->
+<button class="ai-fab" id="ai-fab" type="button" aria-label="Open AI assistant" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg><span>Ask AI</span>
+</button>
+</div>
+
+<!-- AI page -->
+<section class="view ai-view" id="ai-view" aria-label="AI assistant" aria-hidden="true">
+  <header class="ai-bar">
+    <button class="ai-back" id="ai-back" type="button" aria-label="Back to browsing" title="Back (Esc)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      <span>Browse</span>
+    </button>
+    <div class="ai-title">
+      <span class="ai-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg></span>
+      <div><strong id="ai-name">Veil AI</strong><span class="ai-model" id="ai-model"></span></div>
+    </div>
+    <button class="ai-newchat" id="ai-new" type="button" aria-label="New chat" title="New chat">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>New chat</span>
+    </button>
+  </header>
+
+  <div class="ai-log" id="ai-log" role="log" aria-live="polite" aria-relevant="additions">
+    <div class="ai-col">
+      <div class="ai-empty" id="ai-empty">
+        <span class="ai-orb" aria-hidden="true"></span>
+        <h2>How can I help?</h2>
+        <p>Ask a question, get something explained, or draft some writing.</p>
+        <div class="ai-suggest">
+          <button type="button" data-prompt="Explain the difference between a proxy and a VPN in simple terms."><b>Proxy vs. VPN</b><span>explained simply</span></button>
+          <button type="button" data-prompt="Give me 5 tips to study more effectively."><b>Study smarter</b><span>5 practical tips</span></button>
+          <button type="button" data-prompt="Write a short, friendly email asking my teacher for a deadline extension."><b>Draft an email</b><span>asking for an extension</span></button>
+          <button type="button" data-prompt="Explain how the internet gets a web page to my screen, step by step."><b>How the web works</b><span>step by step</span></button>
+        </div>
+        <ul class="ai-status" id="ai-status" aria-label="AI provider status"></ul>
+        <p class="ai-off" id="ai-off" hidden>The AI assistant isn&rsquo;t set up on this server yet.</p>
+      </div>
+      <div class="ai-thread" id="ai-thread"></div>
+    </div>
+  </div>
+
+  <div class="ai-dock">
+    <form class="ai-compose" id="ai-form" autocomplete="off">
+      <label class="sr-only" for="ai-input">Message the AI assistant</label>
+      <textarea id="ai-input" rows="1" maxlength="4000" placeholder="Message Veil AI" enterkeyhint="send"></textarea>
+      <button class="ai-send" id="ai-send" type="submit" aria-label="Send">
+        <svg class="i-send" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>
+        <svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+      </button>
+    </form>
+    <p class="ai-foot">AI can make mistakes. Don&rsquo;t share passwords or private details.</p>
+  </div>
+</section>
+
+<div class="toast glass" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

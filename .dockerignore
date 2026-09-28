@@ -9,3 +9,10 @@ thumbnails/_thumbnail-sources.csv
 UGS-Files/emulated/000_Templates
 .git
 _large-games
+# Browse + AI proxy: only its source goes in; it's built inside the image.
+proxy/node_modules
+proxy/dist
+proxy/test
+proxy/.env
+proxy/Dockerfile
+proxy/docker-compose.yml

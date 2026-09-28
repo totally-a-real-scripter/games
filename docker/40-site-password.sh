@@ -4,7 +4,8 @@
 # The cookie is sha256("lanternwise|" + password); the same salt is used in login.html.
 set -eu
 
-OUT=/etc/nginx/conf.d/00-site-password.conf
+# NGINX_CONF_DIR lets the combined image (nginx from Alpine packages) use /etc/nginx/http.d.
+OUT="${NGINX_CONF_DIR:-/etc/nginx/conf.d}/00-site-password.conf"
 SALT='lanternwise|'
 
 if [ -z "${SITE_PASSWORD:-}" ]; then

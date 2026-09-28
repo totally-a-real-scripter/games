@@ -1,14 +1,33 @@
-# Sigmund:re — static game portal served by nginx, behind a password (set SITE_PASSWORD)
-FROM nginx:1.27-alpine
+# Sigmund:re — game portal (nginx) + Browse & AI (the Veil proxy, Node.js) in one container.
+# Visitors reach everything on port 3847, behind the same password (set SITE_PASSWORD).
 
-# Replace the default site with ours (port 3847)
-RUN rm -f /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/conf.d/gamestash.conf
+# ---- build the proxy (TypeScript -> JavaScript) ----
+FROM node:22-alpine AS veil-build
+WORKDIR /veil
+COPY proxy/package.json proxy/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY proxy/tsconfig.json ./
+COPY proxy/src ./src
+RUN npx tsc -p tsconfig.json
 
-# Writes the password check from SITE_PASSWORD when the container starts.
-# (sed strips Windows line endings, which would break the script.)
-COPY docker/40-site-password.sh /docker-entrypoint.d/40-site-password.sh
-RUN sed -i 's/\r$//' /docker-entrypoint.d/40-site-password.sh && chmod +x /docker-entrypoint.d/40-site-password.sh
+# ---- runtime: Node for the proxy + nginx for the site ----
+FROM node:22-alpine
+RUN apk add --no-cache nginx su-exec \
+ && rm -f /etc/nginx/http.d/default.conf \
+ && mkdir -p /run/nginx
+
+# nginx config (port 3847) and the start-up scripts.
+# (sed strips Windows line endings, which would break the scripts.)
+COPY nginx.conf /etc/nginx/http.d/gamestash.conf
+COPY docker/40-site-password.sh docker/start.sh /docker/
+RUN sed -i 's/\r$//' /docker/*.sh && chmod +x /docker/*.sh
+
+# The proxy: production dependencies + compiled code + its UI files.
+WORKDIR /opt/veil
+COPY proxy/package.json proxy/package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
+COPY --from=veil-build /veil/dist ./dist
+COPY proxy/public ./public
 
 # Site files + games + thumbnails
 COPY index.html login.html games.json /usr/share/nginx/html/
@@ -16,6 +35,12 @@ COPY assets/ /usr/share/nginx/html/assets/
 COPY thumbnails/ /usr/share/nginx/html/thumbnails/
 COPY UGS-Files/ /usr/share/nginx/html/UGS-Files/
 
+# Requests reach the proxy through Coolify's proxy and then nginx: two hops in X-Forwarded-For.
+ENV NODE_ENV=production \
+    TRUST_PROXY_HOPS=2
+
 EXPOSE 3847
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3847/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3847/healthz >/dev/null && wget -qO- http://127.0.0.1:43117/healthz >/dev/null || exit 1
+
+CMD ["/docker/start.sh"]

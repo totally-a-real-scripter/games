@@ -1589,6 +1589,67 @@ function pageNotFound() {
 }
 
 /* ---------- router ---------- */
+/* ---------- Browse + AI ----------
+   The Veil web proxy runs in the same container and is served from /__px/ (see nginx.conf).
+   Its page lives in one iframe under the header that is kept alive while visitors switch tabs,
+   so a site they're browsing (or an AI chat) is still there when they come back. Switching
+   between Browse and AI tells the iframe to slide between its two views. */
+const VEIL = { frame: null, view: null };
+function veilStage() {
+  let st = document.getElementById('veilStage');
+  if (!st) {
+    st = document.createElement('div');
+    st.id = 'veilStage'; st.className = 'veil-stage'; st.hidden = true;
+    document.body.appendChild(st);
+  }
+  return st;
+}
+function placeVeil() {
+  const top = document.querySelector('.top');
+  if (top) document.documentElement.style.setProperty('--veil-top', Math.round(top.getBoundingClientRect().bottom) + 'px');
+}
+function markVeilButtons(view) {
+  for (const [id, v] of [['browseBtn', 'browse'], ['aiBtn', 'ai']]) {
+    const b = document.getElementById(id);
+    if (b) { b.classList.toggle('on', view === v); b.setAttribute('aria-pressed', view === v ? 'true' : 'false'); }
+  }
+}
+function showVeil(view) {
+  const st = veilStage();
+  document.documentElement.classList.toggle('veil-on', !!view);
+  markVeilButtons(view);
+  if (!view) { st.hidden = true; return; }
+  setTitle((view === 'ai' ? 'AI' : 'Browse') + ' · ' + BRAND);
+  placeVeil();
+  st.hidden = false;
+  if (!VEIL.frame) {
+    const f = document.createElement('iframe');
+    f.title = 'Browse and AI';
+    f.allow = 'fullscreen; autoplay; clipboard-read; clipboard-write';
+    f.setAttribute('allowfullscreen', '');
+    f.src = view === 'ai' ? '/__px/ai' : '/__px/';
+    st.appendChild(f);
+    VEIL.frame = f;
+  } else if (VEIL.view !== view) {
+    try { VEIL.frame.contentWindow.postMessage({ veilCmd: view }, location.origin); } catch (e) {}
+  }
+  VEIL.view = view;
+}
+// The proxy tells us when it switches views itself (its back arrow, Esc, a swipe): keep the header in sync.
+addEventListener('message', e => {
+  if (!VEIL.frame || e.source !== VEIL.frame.contentWindow || e.origin !== location.origin) return;
+  const d = e.data;
+  if (!d || d.veilShell !== 1 || (d.view !== 'ai' && d.view !== 'browse')) return;
+  VEIL.view = d.view;
+  if (CUR === '#/browse' || CUR === '#/ai') {
+    CUR = '#/' + d.view;
+    try { history.replaceState({ sig: CUR }, '', location.pathname + location.search); } catch (err) {}
+    markVeilButtons(d.view);
+    setTitle((d.view === 'ai' ? 'AI' : 'Browse') + ' · ' + BRAND);
+  }
+});
+addEventListener('resize', () => { if (document.documentElement.classList.contains('veil-on')) placeVeil(); });
+
 function route() {
   const parts = decodeURIComponent(CUR.replace(/^#/, '')).split('/').filter(Boolean);
   setTitle(`${BRAND} · Free Online Games`);
@@ -1597,6 +1658,9 @@ function route() {
   app.onclick = null;   // pages that need a click handler (the Theme Store) set their own
   if (DRAFT_ON && parts[0] !== 'make') { DRAFT_ON = false; applySettings(); }   // leaving the Theme Maker
   if (player.g && !(parts[0] === 'play' && parts[1] === player.g.slug)) setMode('mini');
+  const veilView = parts[0] === 'browse' || parts[0] === 'ai' ? parts[0] : null;
+  showVeil(veilView);
+  if (veilView) return;
   switch (parts[0]) {
     case undefined: pageHome(); break;
     case 'play': pagePlay(parts[1]); break;
@@ -1771,6 +1835,10 @@ function wireSettings() {
 async function boot() {
   $('#brandA').textContent = CONFIG.brand[0]; $('#brandB').textContent = CONFIG.brand[1];
   $('#randomIco').outerHTML = ic('shuffle');
+  $('#browseIco').outerHTML = ic('globe');
+  $('#aiIco').outerHTML = ic('sparkles');
+  $('#browseBtn').onclick = () => nav('#/browse');
+  $('#aiBtn').onclick = () => nav('#/ai');
   await loadThemePacks();
   applySettings();
   // After signing in, the sign-in page swaps this page in without a real page load, and Chrome keeps

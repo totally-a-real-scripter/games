@@ -1,0 +1,17 @@
+# Keep the build context small and never ship local secrets or build output.
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.log
+coverage
+.vscode
+.idea
+Dockerfile
+docker-compose*.yml
+README.md
+test
+deploy

@@ -1,0 +1,45 @@
+# Builds from the Dockerfile and runs the proxy on its dedicated port.
+# Optional free AI assistant: `docker compose --profile ai up -d --build`
+# starts Ollama alongside it (see README "AI assistant").
+#   PORT      - port the app listens on inside the container (default 43117)
+#   HOST_PORT - port published on the host (default 43117)
+#   BIND_ADDR - host interface to bind (default 127.0.0.1: reach it through a
+#               reverse proxy; set 0.0.0.0 to expose it directly)
+services:
+  veil:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PORT: ${PORT:-43117}
+    image: veil-proxy:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: ${PORT:-43117}
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${HOST_PORT:-43117}:${PORT:-43117}"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    mem_limit: 1g
+    pids_limit: 256
+
+  # Free, self-hosted AI for the assistant (only started with --profile ai).
+  # Not published on any host port: only the proxy can reach it.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ai"]
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    mem_limit: 8g
+
+volumes:
+  ollama:

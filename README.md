@@ -1,7 +1,7 @@
 # Sigmund:re
 
 A static game portal for the games in `UGS-Files/`, with thumbnails from `thumbnails/`.
-There's no backend: nginx serves the files, and the page loads its catalog from `games.json`.
+nginx serves the files, and the page loads its catalog from `games.json`. The **Browse** and **AI** buttons are served by a small Node.js proxy that runs next to nginx in the same container (see *Browse + AI* below).
 
 ## What's in here
 
@@ -14,6 +14,8 @@ There's no backend: nginx serves the files, and the page loads its catalog from 
 | `login.html` | Sign-in page (see *Password* below) |
 | `Dockerfile`, `nginx.conf`, `docker/` | Container image; nginx listens on **port 3847** and checks the password |
 | `docker-compose.yml` | Optional, only for Coolify's Docker Compose build pack |
+| `proxy/` | **Browse + AI**: the Veil web proxy and AI assistant (Node.js), built into the same image |
+| `docker/start.sh` | Starts the proxy and nginx together inside the container |
 
 ## Deploy on Coolify (Dockerfile build pack)
 
@@ -36,6 +38,24 @@ To add them back later (for example with Git LFS: `git lfs track "UGS-Files/html
 2. Copy their three entries from `_large-games/large-games.json` into `games.json` (it's a JSON array, so add them anywhere inside the `[ ]`).
 
 The rest of the library is about 0.4 GB, so the first build and push will still take a little while.
+
+## Browse + AI (top bar)
+
+The **Browse** and **AI** buttons next to *Surprise me* open the Veil web proxy and its AI assistant under the header. They're part of this same container:
+
+- `docker/start.sh` starts the proxy on `127.0.0.1:43117` (only reachable inside the container) and nginx on `3847`.
+- nginx forwards `/p/…` (pages viewed through the proxy) and `/__px/…` (its interface, AI page and API) to it.
+- Everything sits behind the same site password. Signed-out visitors can't use the proxy or the AI.
+- The Browse/AI view stays loaded while you switch to games and back, so a page you're browsing or an AI chat is still there. Switching between Browse and AI slides between them.
+
+**AI setup:** add free API keys as environment variables on this Coolify resource. Add any of `GROQ_API_KEY`, `CEREBRAS_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, `OPENROUTER_API_KEY`, then redeploy. The AI switches to the next provider when one hits its free limit. With no keys, the AI page says it isn't set up yet; Browse works without any keys. Every other option (limits, models, order, a self-hosted Ollama) is in `proxy/.env.example` and `proxy/README.md`. Proxy settings are plain environment variables on the same resource.
+
+**Security notes:**
+- The sign-in cookie is re-issued as **HttpOnly** after a correct password, so page scripts, including sites viewed through the proxy, can't read it. Every visit to `/` still asks for the password as before.
+- Private and internal addresses (the server itself, other Coolify services, cloud metadata) are blocked by the proxy.
+- Sites viewed through the proxy share this site's address. A hostile site could in theory read or change things this site keeps in the browser: theme, favorites and history. They can't touch the password cookie, the server or other visitors. Don't sign in to sensitive accounts through Browse.
+
+**Updating the proxy:** the proxy's source lives in `proxy/`, a copy of the standalone Veil project. Replace that folder with a newer copy and redeploy.
 
 ## Password (sign-in page)
 

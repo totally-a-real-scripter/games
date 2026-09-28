@@ -7,4 +7,10 @@ services:
       - "3847"
     environment:
       - SITE_PASSWORD=${SITE_PASSWORD}
+      # Browse + AI: add the AI keys you use (see proxy/.env.example for every option)
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - CEREBRAS_API_KEY=${CEREBRAS_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
     restart: unless-stopped

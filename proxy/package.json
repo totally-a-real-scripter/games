@@ -1,0 +1,30 @@
+{
+  "name": "veil-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A hardened, self-hosted web proxy with SSRF protection, server-side cookie jars and a modern UI.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/src/server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --enable-source-maps dist/src/server.js",
+    "dev": "tsc -p tsconfig.json && node --env-file-if-exists=.env dist/src/server.js",
+    "test": "tsc -p tsconfig.json && node --test \"dist/test/**/*.test.js\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "ipaddr.js": "2.5.0",
+    "parse5": "8.0.1",
+    "parse5-html-rewriting-stream": "8.0.1",
+    "tldts": "7.4.15",
+    "tough-cookie": "6.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "typescript": "5.9.3"
+  }
+}
