@@ -31,6 +31,7 @@
   }
   var proxyOrigin = location.origin;
   var nativeFetch = window.fetch ? window.fetch.bind(window) : null;
+  var nativeReplaceState = History.prototype.replaceState;
 
   // --------------------------------------------------------------------------
   // URL helpers
@@ -364,6 +365,26 @@
   if (window.navigation && window.navigation.addEventListener) {
     window.navigation.addEventListener('navigate', function (e) {
       try {
+        // Some apps (YouTube) change the address with history functions taken
+        // from elsewhere, which our pushState/replaceState hooks never see, and
+        // move it out of /p/ (e.g. to "/watch?v=..."). Put it straight back under
+        // the proxy, keeping the page's history state, so cookies, reloads and
+        // relative requests keep working.
+        if ((e.navigationType === 'push' || e.navigationType === 'replace') && !e.hashChange) {
+          var d = new URL(e.destination.url);
+          if (d.origin === proxyOrigin && d.pathname.indexOf(PREFIX) !== 0 && d.pathname.indexOf('/__px/') !== 0) {
+            var realOrigin = currentReal().origin; // the address hasn't changed yet
+            if (/^https?:/.test(realOrigin)) {
+              var fixed = encode(new URL(d.pathname + d.search + d.hash, realOrigin));
+              Promise.resolve().then(function () {
+                try {
+                  if (location.pathname.indexOf(PREFIX) !== 0) { nativeReplaceState.call(history, history.state, '', fixed); report(); }
+                } catch (err) {}
+              });
+            }
+            return;
+          }
+        }
         if (e.hashChange || e.downloadRequest || !e.cancelable) return;
         var u = new URL(e.destination.url);
         if (u.origin !== proxyOrigin && /^https?:$/.test(u.protocol)) {

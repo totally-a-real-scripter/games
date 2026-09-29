@@ -2,6 +2,25 @@
 (function () {
   'use strict';
 
+  // Safety net: this shell must never load inside its own page viewport. That
+  // happens when a proxied page moves its address out of /p/ (e.g. to "/") and
+  // then reloads: the frame would get another copy of the shell, which loads the
+  // site again, and so on until the browser runs out of memory. Send the frame
+  // back to the site it was showing instead.
+  try {
+    if (window.parent !== window && window.frameElement && window.frameElement.id === 'frame' &&
+        window.parent.document.getElementById('frame') === window.frameElement) {
+      var shown = window.parent.Veil && window.parent.Veil.current ? window.parent.Veil.current() : null;
+      var back = null;
+      try {
+        var su = shown ? new URL(shown) : null;
+        if (su && /^https?:$/.test(su.protocol)) back = '/p/' + su.protocol.slice(0, -1) + '/' + su.host + su.pathname + su.search + su.hash;
+      } catch (err) {}
+      location.replace(back || 'about:blank');
+      return;
+    }
+  } catch (e) {}
+
   var $ = function (id) { return document.getElementById(id); };
   var body = document.body;
   var frame = $('frame');
@@ -262,6 +281,7 @@
     embedded: EMBEDDED,
     go: go,
     mainUrl: mainUrl,
+    current: function () { return current ? current.href : null; },
     restoreTitle: function () { document.title = pageTitle; },
   };
   if (initial && /^https?:$/.test(initial.protocol)) go(initial);
