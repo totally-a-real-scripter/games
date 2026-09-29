@@ -1,0 +1,66 @@
+/* Theme: Doomsday. Secret theme, unlocked with a code in Settings > Codes.
+   Cold riveted iron, an emerald cloak and a green mystic glow, with carved Roman capitals. */
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&display=swap");
+:root[data-theme="doomsday"]{
+  --paper:#070a09;
+  --paper-2:#0c110f;
+  --surface:#151a18;
+  --ink:#e2ebe5;
+  --line:#2f7a4d;
+  --shadow-c:#03160c;
+  --muted:#8c9c93;
+  --dots:rgba(69,224,138,.07);
+  color-scheme:dark;
+}
+:root[data-theme="doomsday"][data-accent]{--accent:#45e08a}
+
+/* Iron plate: a green glow rising from below and a faint grid of rivets. */
+:root[data-theme="doomsday"] body{
+  background-color:#070a09;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% 115%,rgba(46,204,113,.16),transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% -10%,rgba(20,90,50,.22),transparent 70%),
+    radial-gradient(circle at 12px 12px,rgba(255,255,255,.07) 0 1.4px,rgba(0,0,0,.55) 1.6px 2.4px,transparent 2.6px),
+    linear-gradient(180deg,rgba(255,255,255,.015),rgba(0,0,0,.2));
+  background-size:auto,auto,48px 48px,auto;
+  background-attachment:fixed;
+}
+
+/* Carved headings with a faint green glow. */
+:root[data-theme="doomsday"] h1,:root[data-theme="doomsday"] h2{
+  font-family:"Cinzel",Georgia,"Times New Roman",serif;
+  font-weight:800;
+  letter-spacing:.5px;
+  color:#eef6f0;
+  text-shadow:0 0 14px rgba(69,224,138,.35),0 2px 0 #000;
+}
+
+/* Logo: a brushed iron plate with glowing green letters. */
+:root[data-theme="doomsday"] .logo-box{
+  font-family:"Cinzel",Georgia,serif;
+  letter-spacing:.4px;
+  background:linear-gradient(160deg,#4a524e 0%,#262c29 45%,#3a413d 55%,#171b19 100%);
+  color:#b9ffd6;
+  border-color:#45e08a;
+  box-shadow:3px 3px 0 #000,0 0 14px rgba(69,224,138,.45);
+  text-shadow:0 0 8px rgba(69,224,138,.8);
+  animation:doom-pulse 3.2s ease-in-out infinite;
+}
+:root[data-theme="doomsday"] .logo-box span:last-child{color:#45e08a;-webkit-text-stroke:0}
+
+/* Cards: iron edges that catch the green light on hover. */
+:root[data-theme="doomsday"] .card{background:linear-gradient(180deg,#1a201d,#121614)}
+:root[data-theme="doomsday"] .card:hover{box-shadow:6px 6px 0 var(--shadow-c),0 0 18px rgba(69,224,138,.28)}
+
+:root[data-theme="doomsday"] .lineup .num{color:#45e08a;text-shadow:0 0 10px rgba(69,224,138,.45)}
+/* The logo picture (doomsday-logo.svg) replaces the text logo. */
+:root[data-theme="doomsday"] .logo-box{display:none}
+:root[data-theme="doomsday"] .logo-img{display:block;height:42px;max-width:230px;animation:doom-halo 3.2s ease-in-out infinite}
+@media (max-width:620px){:root[data-theme="doomsday"] .logo-img{height:30px}}
+:root[data-theme="doomsday"][data-motion="off"] .logo-img{animation:none;filter:drop-shadow(0 0 6px rgba(69,224,138,.4))}
+@keyframes doom-halo{0%,100%{filter:drop-shadow(0 0 4px rgba(69,224,138,.3))}50%{filter:drop-shadow(0 0 12px rgba(69,224,138,.6))}}
+:root[data-theme="doomsday"][data-motion="off"] .logo-box{animation:none}
+@keyframes doom-pulse{
+  0%,100%{box-shadow:3px 3px 0 #000,0 0 10px rgba(69,224,138,.3)}
+  50%{box-shadow:3px 3px 0 #000,0 0 22px rgba(69,224,138,.65)}
+}

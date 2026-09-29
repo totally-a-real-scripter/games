@@ -548,6 +548,104 @@
   }
 
   // --------------------------------------------------------------------------
+  // Ad blocker (in-page part). Ad and tracker requests are already blocked on
+  // the server; this hides the empty ad slots they leave behind and, on
+  // YouTube, backs up the server-side removal of video ads.
+
+  if (cfg.adblock) {
+    var AD_CSS = [
+      // Generic ad containers (kept conservative so real content isn't hidden)
+      'ins.adsbygoogle', '.adsbygoogle', '[id^="div-gpt-ad"]', '[id^="google_ads_iframe"]',
+      'iframe[id^="google_ads_iframe"]', '[data-google-query-id]', '[data-ad-slot]', 'amp-ad',
+      'amp-embed[type="taboola"]', '[id^="taboola-"]', '.trc_rbox_container', '.OUTBRAIN', '[data-widget-id^="AR_"]',
+      '.ad-slot', '.ad-banner', '.adsbox', '.ad-container', '[aria-label="Advertisement"]',
+    ];
+    var YT_CSS = [
+      // YouTube ad slots, promoted results and the anti-adblock dialog
+      'ytd-ad-slot-renderer', 'ytd-in-feed-ad-layout-renderer', 'ytd-promoted-sparkles-web-renderer',
+      'ytd-promoted-sparkles-text-search-renderer', 'ytd-display-ad-renderer', 'ytd-promoted-video-renderer',
+      'ytd-compact-promoted-video-renderer', 'ytd-banner-promo-renderer', 'ytd-statement-banner-renderer',
+      'ytd-search-pyv-renderer', 'ytd-companion-slot-renderer', 'ytd-action-companion-ad-renderer',
+      'ytd-player-legacy-desktop-watch-ads-renderer', 'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"]',
+      '#masthead-ad', '#player-ads', '.ytd-merch-shelf-renderer', 'ytd-merch-shelf-renderer',
+      'ytd-rich-item-renderer:has(> #content > ytd-ad-slot-renderer)', 'ytd-rich-section-renderer:has(ytd-statement-banner-renderer)',
+      '.ytp-ad-module', '.ytp-ad-overlay-container', '.ytp-ad-image-overlay', '.video-ads',
+      'ytm-promoted-sparkles-web-renderer', 'ytm-companion-ad-renderer', 'ad-slot-renderer',
+      'ytd-enforcement-message-view-model', 'tp-yt-paper-dialog:has(ytd-enforcement-message-view-model)',
+    ];
+    var host = currentReal().hostname;
+    var isYT = /(^|\.)(youtube\.com|youtube-nocookie\.com)$/i.test(host);
+    try {
+      var st = document.createElement('style');
+      st.setAttribute('data-px', 'adblock');
+      st.textContent = (isYT ? AD_CSS.concat(YT_CSS) : AD_CSS).join(',\n') + '{display:none!important}';
+      (document.head || document.documentElement).appendChild(st);
+    } catch (e) {}
+
+    if (isYT) {
+      // Backup for ad data that reaches the page some other way (the server
+      // already strips it from YouTube's API responses and embedded data).
+      var YT_AD_KEYS = { adPlacements: 1, playerAds: 1, adSlots: 1, adBreakHeartbeatParams: 1, enforcementMessageViewModel: 1 };
+      var prune = function (o, d) {
+        if (!o || typeof o !== 'object' || d > 60) return;
+        for (var k in o) {
+          if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+          if (YT_AD_KEYS[k]) { try { delete o[k]; } catch (e) {} }
+          else if (o[k] && typeof o[k] === 'object') prune(o[k], d + 1);
+        }
+      };
+      var nativeParse = JSON.parse;
+      JSON.parse = function () {
+        var r = nativeParse.apply(this, arguments);
+        try {
+          if (r && typeof r === 'object' && (r.adPlacements || r.playerAds || r.adSlots || r.playerResponse || r.auxiliaryUi)) prune(r, 0);
+        } catch (e) {}
+        return r;
+      };
+
+      // Last resort: if a video ad still starts, mute it, hurry it along and
+      // press Skip. Only a short, separate ad clip is jumped to its end: when
+      // YouTube splices the ad into the video's own stream, the <video> is the
+      // real video, so seeking to its end would skip the whole thing. Sound and
+      // speed are put back when the ad is over.
+      var SKIP = '.ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button-slot button';
+      var adState = null; // { v, muted, rate } while an ad is being handled
+      setInterval(function () {
+        try {
+          var player = document.querySelector('.html5-video-player');
+          var inAd = !!player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'));
+          var v = player && player.querySelector('video');
+          if (inAd && v) {
+            if (!adState || adState.v !== v) adState = { v: v, muted: v.muted, rate: v.playbackRate };
+            v.muted = true;
+            if (isFinite(v.duration) && v.duration > 0 && v.duration <= 180) {
+              if (v.currentTime < v.duration - 0.25) v.currentTime = v.duration - 0.1;
+            } else if (v.playbackRate < 8) {
+              v.playbackRate = 8;
+            }
+            if (v.paused) v.play().catch(function () {});
+            var b = document.querySelector(SKIP);
+            if (b) b.click();
+          } else if (adState) {
+            try { adState.v.muted = adState.muted; adState.v.playbackRate = adState.rate || 1; } catch (e2) {}
+            adState = null;
+          }
+          // Close the "ad blockers are not allowed" dialog if it ever appears.
+          var enf = document.querySelector('ytd-enforcement-message-view-model');
+          if (enf) {
+            var dlg = enf.closest('tp-yt-paper-dialog');
+            if (dlg) dlg.remove();
+            var bd = document.querySelector('tp-yt-iron-overlay-backdrop');
+            if (bd) bd.remove();
+            var mv = document.querySelector('#movie_player video');
+            if (mv && mv.paused) mv.play().catch(function () {});
+          }
+        } catch (e) {}
+      }, 250);
+    }
+  }
+
+  // --------------------------------------------------------------------------
   // Tell the proxy UI (if we're displayed inside it) where we are.
 
   function report(type) {

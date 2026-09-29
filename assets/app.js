@@ -40,7 +40,7 @@ const THEMES = [
   { id: 'black', name: 'Black', note: 'Deep black with bright accents. The default.', swatch: ['#0b0b0c', '#18181b', '#f2f0ea'], dark: true, c: { paper: '#0b0b0c', surface: '#18181b', ink: '#f2f0ea', line: '#34343a', shadow: '#000000', muted: '#9a9aa3' } },
   { id: 'paper', name: 'Paper', note: 'Warm off-white with bold ink outlines.', swatch: ['#f4efe6', '#fffaf1', '#17130f'], dark: false, c: { paper: '#f4efe6', surface: '#fffaf1', ink: '#17130f', line: '#17130f', shadow: '#17130f', muted: '#6f655a' } },
   { id: 'system', name: 'Match device', note: 'Black or Paper, following your device setting.', swatch: ['#0b0b0c', '#f4efe6', '#ffc93c'] },
-  // Theme Store themes (store: true): hidden in Settings until "bought" in the store (#/store). They're all free.
+  // Theme Store themes (store: true): hidden in Settings until "bought" in the store (#/store). 
   { id: 'midnight', name: 'Midnight', note: 'Deep navy blue, like a late-night study session.', swatch: ['#0d1321', '#18223a', '#e8ecf6'], store: true, dark: true, c: { paper: '#0d1321', surface: '#18223a', ink: '#e8ecf6', line: '#2c3a5c', shadow: '#05080f', muted: '#8b97b3' } },
   { id: 'forest', name: 'Forest', note: 'Dark pine greens with soft moss text.', swatch: ['#0e1712', '#19281f', '#e7f0e6'], store: true, dark: true, c: { paper: '#0e1712', surface: '#19281f', ink: '#e7f0e6', line: '#2d4435', shadow: '#050a07', muted: '#8fa596' } },
   { id: 'mocha', name: 'Mocha', note: 'Warm coffee browns. Cozy.', swatch: ['#1a1411', '#2a211c', '#f3e9df'], store: true, dark: true, c: { paper: '#1a1411', surface: '#2a211c', ink: '#f3e9df', line: '#4a3a31', shadow: '#0c0806', muted: '#b09c8c' } },
@@ -58,6 +58,7 @@ const THEMES = [
   // Secret themes: hidden until unlocked with a code (see EGGS, "codes & easter eggs").
   { id: 'gold', name: 'Gold', note: 'Everything you touch turns to gold.', swatch: ['#0d0a04', '#1c160b', '#ffcc33'], secret: true, dark: true, c: { paper: '#0d0a04', surface: '#1c160b', ink: '#fff3cf', line: '#d4a82a', shadow: '#000000', muted: '#c4ab6c' } },
   { id: 'rainbow', name: 'Rainbow', note: 'Outlines and accents that cycle through every color.', swatch: ['#0c0c12', '#ff5ab4', '#57b7ff'], secret: true, dark: true, c: { paper: '#0c0c12', surface: '#181822', ink: '#f5f3ff', line: '#b39cff', shadow: '#2a1f55', muted: '#a3a0b8' } },
+  { id: 'doomsday', name: 'Doomsday', note: 'Cold iron, an emerald cloak and a green glow. Kneel.', swatch: ['#070a09', '#151a18', '#45e08a'], logoText: ['Doomsday', ''], logo: 'doomsday-logo.svg', secret: true, dark: true, c: { paper: '#070a09', surface: '#151a18', ink: '#e2ebe5', line: '#2f7a4d', shadow: '#03160c', muted: '#8c9c93' } },
   { id: 'retro-98', name: 'Retro 98', note: 'Gray boxes and teal desktop, like an old PC.', swatch: ['#008080', '#c0c0c0', '#000000'], store: true, dark: false, c: { paper: '#008080', surface: '#c0c0c0', ink: '#000000', line: '#000000', shadow: '#000000', muted: '#404040' } }
 ];
 const STORE_PRICE = 'FREE';
@@ -680,12 +681,12 @@ function paintTheme(t) {
   } else if (fl) fl.remove();
   // Logo picture and logo text.
   const logo = $('.logo'); let li = $('.logo-img');
-  const logoPic = t.spec?.images?.logo;
+  const logoPic = t.spec?.images?.logo || t.logo;
   if (logo && logoPic) {
     if (!li) { li = document.createElement('img'); li.className = 'logo-img'; li.alt = ''; logo.appendChild(li); }
     if (li.getAttribute('src') !== themeUrl(logoPic)) li.src = themeUrl(logoPic);
   } else if (li) li.remove();
-  const lt = Array.isArray(t.spec?.logoText) ? t.spec.logoText : [];
+  const lt = Array.isArray(t.spec?.logoText) ? t.spec.logoText : Array.isArray(t.logoText) ? t.logoText : [];
   const a = $('#brandA'), b = $('#brandB');
   if (a) a.textContent = lt[0] ? String(lt[0]) : CONFIG.brand[0];
   if (b) b.textContent = lt[0] || lt[1] ? String(lt[1] || '') : CONFIG.brand[1];
@@ -786,7 +787,7 @@ function pageMaker(fromId) {
         <fieldset><legend>1 · The basics</legend>
           <label class="mk-field"><span>Theme name</span><input data-k="name" maxlength="60"></label>
           <label class="mk-field"><span>Description</span><input data-k="note" maxlength="160"></label>
-          <label class="mk-field"><span>Joke price <small>(it's still free)</small></span><input data-k="price" maxlength="40" placeholder="3 potatoes"></label>
+          <label class="mk-field"><span>Joke price</span><input data-k="price" maxlength="40" placeholder="3 potatoes"></label>
           <div class="opt-row"><span><b>Starting colors</b><small>Picks a dark or light set of colors to start from.</small></span>
             <div class="seg"><button type="button" data-base="dark">Dark</button><button type="button" data-base="light">Light</button></div></div>
         </fieldset>
@@ -960,6 +961,7 @@ const THEMES_JSON_README = [
 const EGGS = [
   { id: 'gold', kind: 'theme', hash: 'bi0l3rz3ei', name: 'Gold theme', note: 'Everything you touch turns to gold.' },
   { id: 'rainbow', kind: 'theme', hash: '1uhbkcb7oau', name: 'Rainbow theme', note: 'Outlines and accents that cycle through every color.' },
+  { id: 'doomsday', kind: 'theme', hash: '1mg2n0v8nl3', name: 'Doomsday theme', note: 'Cold iron, an emerald cloak and a green glow. Kneel.' },
   { id: 'snow', kind: 'toggle', hash: '1xqjpcm6irs', name: 'Snowfall', note: 'Snow gently falls over the whole site.' },
   { id: 'confetti', kind: 'toggle', hash: 'rp4c7kacet', name: 'Confetti clicks', note: 'Every click pops a little burst of confetti.' },
   { id: 'cheats', kind: 'toggle', hash: '1y3wiblx9cn', name: 'Cheat engine', note: 'A Cheats button on the play page: speed hack, memory scanner, save editor and emulator codes.' },
@@ -1052,7 +1054,7 @@ function codesSettingsHtml() {
         <input name="code" placeholder="Enter a secret code" maxlength="40" spellcheck="false" autocapitalize="characters" aria-label="Secret code">
         <button class="tbtn" type="submit">Redeem</button>
       </form>
-      <p class="set-note">${found.length ? `${found.length} of ${EGGS.length} secrets found.` : `There are ${EGGS.length} secrets hidden in here. Find a code to unlock one.`} Unlocked secrets stay unlocked on this device.</p>
+      <p class="set-note">Unlocked secrets stay unlocked on this device.</p>
       ${found.map(row).join('')}
     </div>`;
 }
@@ -1561,7 +1563,7 @@ function pageStore() {
   app.innerHTML = `
     ${fonts.length ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fonts.map(f => 'family=' + encodeURIComponent(f).replace(/%20/g, '+')).join('&')}&display=swap">` : ''}
     <section class="banner" style="--c:#1fc7b2"><span class="badge-ico">${ic('bag')}</span>
-      <div><div class="label">Every theme is free</div><h1>Theme Store</h1><p>Get a theme and it’s yours on this device. Switch any time here or in Settings.</p></div>
+      <div><div class="label">Themes</div><h1>Theme Store</h1><p>Get a theme and it’s yours on this device. Switch any time here or in Settings.</p></div>
       <div class="total"><b>${owned}/${total}</b>owned</div></section>
     <a class="ts-make" href="#/make"><span class="badge-ico">${ic('sparkles')}</span><span><b>Make your own theme</b><small>Pick colors, fonts and pictures (backgrounds, logos, cursors, game pictures). No code needed.</small></span>${ic('chevron')}</a>
     ${mine.length ? `<section class="block">${head('Saved in this browser', 'Made by you')}<div class="ts-grid-list">${mine.map(card).join('')}</div></section>` : ''}
@@ -1576,7 +1578,7 @@ function pageStore() {
     if (b.dataset.get) {
       const t = THEMES.find(x => x.id === b.dataset.get);
       b.disabled = true; b.classList.add('buying'); b.textContent = 'Getting…';
-      setTimeout(() => { buyTheme(t.id); toast(`${t.name} is yours. Free!`); pageStore(); }, 550);
+      setTimeout(() => { buyTheme(t.id); toast(`${t.name} is yours`); pageStore(); }, 550);
     } else if (b.dataset.use) {
       const y = scrollY;
       setSetting('theme', b.dataset.use); toast(`Now using ${THEMES.find(x => x.id === b.dataset.use).name}`);
@@ -1735,7 +1737,7 @@ function renderSettings() {
       <div class="set-group"><span class="label">Theme</span>
         <div class="themes">${THEMES.filter(t => ownsTheme(t.id)).map(t => `<button class="theme-opt" data-theme-id="${t.id}" aria-pressed="${settings.theme === t.id}">
           <span class="sw">${t.swatch.map(c => `<i style="background:${c}"></i>`).join('')}</span><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`).join('')}</div>
-        <p class="set-note">${THEMES.some(t => t.store && !ownsTheme(t.id)) ? 'Want more?' : 'You own every theme.'} <a class="ts-link" href="#/store" data-close>${ic('bag')}Theme Store</a> (every theme is free)</p>
+        <p class="set-note">${THEMES.some(t => t.store && !ownsTheme(t.id)) ? 'Want more?' : 'You own every theme.'} <a class="ts-link" href="#/store" data-close>${ic('bag')}Theme Store</a></p>
       </div>
       <div class="set-group"><span class="label">Tab cloak</span>
         <div class="cloaks">${CLOAKS.map(c => `<button class="cloak-opt" data-cloak-id="${c.id}" aria-pressed="${settings.cloak === c.id}">

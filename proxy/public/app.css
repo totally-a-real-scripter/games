@@ -458,6 +458,13 @@ body.embedded .ai-fab { display: none; }
   body.ai-open .main-view { transform: none; }
 }
 
+/* ---------- ad blocker shield ---------- */
+.shield-btn .shield-off { display: none; }
+.shield-btn.on { color: var(--ok); }
+.shield-btn.off { color: var(--faint); }
+.shield-btn.off .shield-check { display: none; }
+.shield-btn.off .shield-off { display: block; }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);

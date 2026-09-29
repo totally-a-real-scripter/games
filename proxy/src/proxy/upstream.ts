@@ -90,11 +90,17 @@ export function upstreamRequest(o: UpstreamOptions): Promise<{ res: http.Incomin
       if (!sock.connecting && !(sock as { pending?: boolean }).pending) connected();
       sock.once(isHttps ? 'secureConnect' : 'connect', connected);
     });
-    // Applies both before the response and while its body is streaming.
-    req.setTimeout(o.idleTimeoutMs, () => {
+    // Applies both before the response and while its body is streaming. While
+    // the body is paused because the browser isn't reading (a video player with
+    // a full buffer), the silence is ours, not the destination's: keep waiting.
+    // The connection still closes when the browser goes away (abort signal).
+    let response: http.IncomingMessage | null = null;
+    const onIdle = () => {
       if (!settled) fail(new UpstreamError('The connection to the destination went idle.', 504, 'idle_timeout'));
+      else if (response && (response.isPaused() || response.readableLength > 0)) req.setTimeout(o.idleTimeoutMs, onIdle);
       else req.destroy(new Error('idle timeout'));
-    });
+    };
+    req.setTimeout(o.idleTimeoutMs, onIdle);
 
     req.on('response', (res) => {
       if (settled) {
@@ -102,6 +108,7 @@ export function upstreamRequest(o: UpstreamOptions): Promise<{ res: http.Incomin
         return;
       }
       settled = true;
+      response = res;
       clearTimeout(connectTimer);
       clearTimeout(responseTimer);
       resolve({ res, req });

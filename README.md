@@ -48,6 +48,8 @@ The **Browse** and **AI** buttons next to *Surprise me* open the Veil web proxy 
 - Everything sits behind the same site password. Signed-out visitors can't use the proxy or the AI.
 - The Browse/AI view stays loaded while you switch to games and back, so a page you're browsing or an AI chat is still there. Switching between Browse and AI slides between them.
 
+**Ad blocker:** on by default for Browse. It blocks ads and trackers on every site, and removes video ads, promoted results and the anti-adblock popup on YouTube. The shield button in the Browse toolbar turns it off per visitor. Settings are `ADBLOCK_*` in `proxy/.env.example`.
+
 **AI setup:** add free API keys as environment variables on this Coolify resource. Add any of `GROQ_API_KEY`, `CEREBRAS_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, `OPENROUTER_API_KEY`, then redeploy. The AI switches to the next provider when one hits its free limit. With no keys, the AI page says it isn't set up yet; Browse works without any keys. Every other option (limits, models, order, a self-hosted Ollama) is in `proxy/.env.example` and `proxy/README.md`. Proxy settings are plain environment variables on the same resource.
 
 **Security notes:**

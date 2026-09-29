@@ -224,6 +224,39 @@
   if (location.hash.length > 1) {
     try { initial = new URL(decodeURIComponent(location.hash.slice(1))); } catch (e) { initial = null; }
   }
+  // ---- ad blocker shield ----
+  var shield = $('btn-shield');
+  var adblockOn = false;
+  function renderShield(info) {
+    shield.classList.toggle('on', adblockOn);
+    shield.classList.toggle('off', !adblockOn);
+    shield.setAttribute('aria-pressed', String(adblockOn));
+    shield.title = adblockOn
+      ? 'Ad blocker on' + (info && info.domains ? ' (' + info.domains.toLocaleString() + ' ad and tracker domains)' : '') + '. Click to turn off.'
+      : 'Ad blocker off. Click to turn on.';
+  }
+  fetch('/__px/adblock/status', { credentials: 'same-origin' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (info) {
+      if (!info || !info.available) return;
+      adblockOn = !!info.on;
+      shield.hidden = false;
+      renderShield(info);
+      shield._info = info;
+    })
+    .catch(function () {});
+  shield.addEventListener('click', function () {
+    adblockOn = !adblockOn;
+    // A plain preference cookie read by the server (not a secret).
+    document.cookie = 'px_ab=' + (adblockOn ? '1' : '0') + '; Path=/; Max-Age=31536000; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+    renderShield(shield._info);
+    toast(adblockOn ? 'Ad blocker on' : 'Ad blocker off');
+    if (current) {
+      startLoading();
+      try { frame.contentWindow.location.reload(); } catch (e) { frame.src = encode(current); }
+    }
+  });
+
   window.Veil = {
     base: BASE,
     embedded: EMBEDDED,

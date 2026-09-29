@@ -20,6 +20,7 @@ import { RewritingStream } from 'parse5-html-rewriting-stream';
 import type { StartTag } from 'parse5-sax-parser';
 import { rewriteCss } from './css.js';
 import { encodeProxyPath, rewriteUrl } from '../proxy/urlcodec.js';
+import { pruneYouTubeInlineScript } from '../adblock/index.js';
 
 export interface HtmlRewriteOptions {
   /** Real URL of the document being rewritten. */
@@ -28,6 +29,8 @@ export interface HtmlRewriteOptions {
   clientConfig: Record<string, unknown>;
   /** Inject the client runtime script (false for iframe srcdoc fragments). */
   inject?: boolean;
+  /** Remove ads from YouTube data embedded in inline scripts (ad blocker). */
+  pruneYouTube?: boolean;
 }
 
 /** Attributes holding a single URL, keyed by attribute name -> element set ('*' = any). */
@@ -55,6 +58,12 @@ class CollectingRewriter extends RewritingStream {
   }
 }
 
+/** URL of the injected runtime; versioned so browsers pick up a new one right after a deploy. */
+let clientScriptSrc = '/__px/client.js';
+export function setClientScriptVersion(version: string): void {
+  clientScriptSrc = `/__px/client.js?v=${encodeURIComponent(version)}`;
+}
+
 export function rewriteHtml(html: string, opts: HtmlRewriteOptions): string {
   const docUrl = opts.url;
   let base = docUrl;
@@ -63,7 +72,7 @@ export function rewriteHtml(html: string, opts: HtmlRewriteOptions): string {
   const rw = new CollectingRewriter();
 
   // Buffers for raw-text elements whose content we rewrite as a whole.
-  let captureTag: 'style' | 'importmap' | null = null;
+  let captureTag: 'style' | 'importmap' | 'ytscript' | null = null;
   let captured = '';
 
   const injectRuntime = () => {
@@ -72,7 +81,7 @@ export function rewriteHtml(html: string, opts: HtmlRewriteOptions): string {
     rw.emitStartTag({
       tagName: 'script',
       attrs: [
-        { name: 'src', value: '/__px/client.js' },
+        { name: 'src', value: clientScriptSrc },
         { name: 'data-px', value: JSON.stringify(opts.clientConfig) },
       ],
       selfClosing: false,
@@ -150,6 +159,7 @@ export function rewriteHtml(html: string, opts: HtmlRewriteOptions): string {
 
     if (name === 'style') captureTag = 'style';
     if (name === 'script' && attr(tag, 'type')?.toLowerCase() === 'importmap') captureTag = 'importmap';
+    else if (opts.pruneYouTube && name === 'script' && attr(tag, 'src') === undefined && isJsType(attr(tag, 'type'))) captureTag = 'ytscript';
     if (captureTag) captured = '';
 
     if (modified) rw.emitStartTag(tag);
@@ -169,7 +179,7 @@ export function rewriteHtml(html: string, opts: HtmlRewriteOptions): string {
 
   rw.on('endTag', (tag, raw) => {
     if (captureTag && (tag.tagName === 'style' || tag.tagName === 'script')) {
-      const content = captureTag === 'style' ? rewriteCss(captured, base, true) : rewriteImportMap(captured, base);
+      const content = finishCapture(captureTag, captured, base);
       rw.emitRaw(content);
       captureTag = null;
       captured = '';
@@ -184,10 +194,20 @@ export function rewriteHtml(html: string, opts: HtmlRewriteOptions): string {
   rw._transformChunk(html);
   if (captureTag) {
     // Unterminated <style>/<script>: flush what we have, rewritten.
-    rw.emitRaw(captureTag === 'style' ? rewriteCss(captured, base, true) : rewriteImportMap(captured, base));
+    rw.emitRaw(finishCapture(captureTag, captured, base));
   }
   injectRuntime();
   return rw.chunks.join('');
+}
+
+function finishCapture(kind: 'style' | 'importmap' | 'ytscript', text: string, base: URL): string {
+  if (kind === 'style') return rewriteCss(text, base, true);
+  if (kind === 'importmap') return rewriteImportMap(text, base);
+  return pruneYouTubeInlineScript(text);
+}
+
+function isJsType(type: string | undefined): boolean {
+  return type === undefined || type === '' || /^(text|application)\/(javascript|ecmascript)$/i.test(type.trim()) || type.trim().toLowerCase() === 'module';
 }
 
 function attr(tag: StartTag, name: string): string | undefined {

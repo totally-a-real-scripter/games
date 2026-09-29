@@ -141,14 +141,17 @@
   /** Go to the AI page (adds a history entry). */
   function open() {
     if (isOpen()) { input.focus(); return; }
-    history.pushState({ veilAi: true }, '', AI_PATH);
+    // Inside the games site the host page owns history (its tabs push entries);
+    // pushing here would make Back/close step through the host's entries instead.
+    if (EMBEDDED) history.replaceState(null, '', AI_PATH);
+    else history.pushState({ veilAi: true }, '', AI_PATH);
     show(true);
   }
 
   /** Leave the AI page, preferring a real history step so Back/Forward stay in sync. */
   function close() {
     if (!isOpen()) return;
-    if (history.state && history.state.veilAi) {
+    if (!EMBEDDED && history.state && history.state.veilAi) {
       history.back(); // popstate below performs the slide
     } else {
       // Landed directly on /ai: there's no earlier entry to go back to.

@@ -32,6 +32,8 @@ import { encodeProxyPath, realUrlFromProxyUrl, type DecodedPath } from './urlcod
 import { rewriteHtml } from '../rewrite/html.js';
 import { rewriteCss } from '../rewrite/css.js';
 import { SESSION_COOKIE } from '../session/store.js';
+import { blockedResponse, isYouTubeAdCarrier, isYouTubeHost, pruneYouTubeJson } from '../adblock/index.js';
+import { readCookie } from './context.js';
 
 const gzip = promisify(zlib.gzip);
 const METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
@@ -78,6 +80,35 @@ export async function handleProxy(
   if (via.includes(cfg.instanceId) || (selfHost && target.hostname.toLowerCase() === selfHost)) {
     return sendError(res, { status: 508, title: 'Loop detected', message: 'The proxy cannot fetch itself.' });
   }
+  // --- ad blocker: stop ad/tracker requests before any network traffic ------
+  const adOn = ctx.adblock.activeFor(readCookie(req, 'px_ab'));
+  if (adOn && ctx.adblock.blocks(target)) {
+    const mode = firstHeader(req.headers['sec-fetch-mode']);
+    const dest = firstHeader(req.headers['sec-fetch-dest']);
+    const fromPage = realUrlFromProxyUrl(firstHeader(req.headers.referer), proxyOrigin(ctx, req)) !== null;
+    // The visitor typed or opened this address themselves (not a page loading it): let it through.
+    if (!(mode === 'navigate' && !fromPage)) {
+      if (mode === 'navigate' && firstHeader(req.headers['sec-fetch-user']) === '?1') {
+        // They clicked a link to an ad/tracker domain: explain rather than show a blank page.
+        return sendError(res, {
+          status: 403,
+          title: 'Blocked by the ad blocker',
+          message: 'This link goes to an ad or tracking site. Turn the ad blocker off with the shield button to open it.',
+          target: target.href,
+          code: 'adblock',
+        });
+      }
+      const b = blockedResponse(dest);
+      res.statusCode = b.status;
+      res.setHeader('cache-control', 'no-store');
+      res.setHeader('x-px-blocked', 'ad');
+      res.setHeader('x-content-type-options', 'nosniff');
+      if (b.type) res.setHeader('content-type', b.type);
+      res.end(b.body ?? undefined);
+      return;
+    }
+  }
+
   const contentLength = Number(req.headers['content-length'] ?? 0);
   if (contentLength > cfg.maxRequestBodyBytes) {
     return sendError(res, { status: 413, title: 'Upload too large', message: 'The request body exceeds the configured limit.' });
@@ -162,7 +193,8 @@ export async function handleProxy(
     // either rewritten as HTML or served with an explicit non-HTML type.
     contentType = await sniffContentType(upRes);
   }
-  const kind = rewriteKind(contentType);
+  const ytPrune = adOn && isYouTubeAdCarrier(target) && /json/.test(contentType);
+  const kind = ytPrune ? 'ytjson' : rewriteKind(contentType);
   const rewrite = kind !== null && !noBody && status !== 206;
 
   copyResponseHeaders(upRes.headers, res, { passthrough: !rewrite });
@@ -209,7 +241,7 @@ export async function handleProxy(
     let text: string;
     try {
       const buf = await readDecoded(upRes, firstHeader(upRes.headers['content-encoding']), cfg.maxRewriteBytes);
-      text = decodeText(buf, contentType, kind);
+      text = decodeText(buf, contentType, kind === 'html' ? 'html' : 'css');
     } catch (err) {
       if (err instanceof BodyTooLargeError) {
         return sendError(res, {
@@ -244,7 +276,10 @@ export async function handleProxy(
           mode: cfg.isolationMode,
           cookieApi: cfg.enableCookies,
           frameGuard: frameGuard(upRes.headers),
+          adblock: adOn,
         },
+        // Remove YouTube's ad schedule from the data embedded in the page.
+        pruneYouTube: adOn && isYouTubeHost(target.hostname),
       });
       res.setHeader('content-type', 'text/html; charset=utf-8');
       // Rewritten documents embed per-session data: don't let browsers
@@ -252,6 +287,12 @@ export async function handleProxy(
       res.removeHeader('etag');
       res.removeHeader('last-modified');
       res.setHeader('cache-control', 'private, no-cache');
+    } else if (kind === 'ytjson') {
+      // YouTube API response: drop ad placements, ad slots and ad renderers.
+      output = pruneYouTubeJson(text)?.text ?? text;
+      res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.removeHeader('etag');
+      res.setHeader('cache-control', 'private, no-store');
     } else {
       output = rewriteCss(text, target);
       res.setHeader('content-type', 'text/css; charset=utf-8');
@@ -322,7 +363,7 @@ function sniffContentType(upRes: IncomingMessage): Promise<string> {
   });
 }
 
-function rewriteKind(contentType: string): 'html' | 'css' | null {
+function rewriteKind(contentType: string): 'html' | 'css' | 'ytjson' | null {
   const mime = contentType.split(';')[0]!.trim();
   if (mime === 'text/html' || mime === 'application/xhtml+xml') return 'html';
   if (mime === 'text/css') return 'css';

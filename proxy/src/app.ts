@@ -14,6 +14,7 @@
  *                             redirected back under /p/ using the Referer
  */
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +25,7 @@ import { ConcurrencyGate, ConnectionCounter, LimitError, RateLimiter } from './s
 import { HostPolicy, PolicyError, systemResolver } from './security/ssrf.js';
 import { SessionStore } from './session/store.js';
 import {
+  readCookie,
   currentSession,
   ensureSession,
   proxyOrigin,
@@ -34,11 +36,13 @@ import {
   type Deps,
 } from './proxy/context.js';
 import { expireSessionCookie, handleProxy } from './proxy/handler.js';
+import { setClientScriptVersion } from './rewrite/html.js';
 import { handleUpgrade } from './proxy/websocket.js';
 import { decodeProxyPath, encodeProxyPath, realUrlFromProxyUrl } from './proxy/urlcodec.js';
 import { firstHeader } from './proxy/headers.js';
 import { log } from './util/log.js';
 import { AiService } from './ai/chat.js';
+import { AdBlocker } from './adblock/index.js';
 import ipaddr from 'ipaddr.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -94,10 +98,13 @@ export function createApp(cfg: Config, deps: Partial<Deps> = {}) {
     sessionRate: new RateLimiter(cfg.sessionsPerIpPerHour / 60, cfg.sessionsPerIpPerHour),
     gate: new ConcurrencyGate(cfg.maxConcurrent, cfg.maxConcurrentPerIp, cfg.maxQueue, cfg.queueTimeoutMs),
     wsCounter: new ConnectionCounter(cfg.maxWebSockets, cfg.maxWebSocketsPerIp),
+    adblock: new AdBlocker(cfg.adblock),
     deps: { resolver: deps.resolver ?? systemResolver, dial: deps.dial },
   };
   const statics = loadStatic();
+  setClientScriptVersion(createHash('sha256').update(statics.get('/__px/client.js')!.body).digest('hex').slice(0, 10));
   const ai = new AiService(cfg.ai);
+  ctx.adblock.start(); // downloads extra blocklists in the background
   const startedAt = Date.now();
 
   async function onRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -183,6 +190,9 @@ export function createApp(cfg: Config, deps: Partial<Deps> = {}) {
 
     if (pathname === '/__px/cookie' && method === 'POST') return handleCookieWrite(ctx, req, res, ip);
     if (pathname === '/__px/ai/status' && method === 'GET') return json(res, 200, ai.status());
+    if (pathname === '/__px/adblock/status' && method === 'GET') {
+      return json(res, 200, { ...ctx.adblock.status(), on: ctx.adblock.activeFor(readCookie(req, 'px_ab')) });
+    }
     if (pathname === '/__px/ai/chat' && method === 'POST') {
       if (!sameOriginApiRequest(ctx, req)) return json(res, 403, { error: 'forbidden' });
       return ai.handleChat(req, res, ip);
@@ -263,6 +273,7 @@ export function createApp(cfg: Config, deps: Partial<Deps> = {}) {
     ctx.sessionRate.stop();
     ctx.sessions.stop();
     ai.stop();
+    ctx.adblock.stop();
   };
   return { server, ctx, close };
 }
