@@ -6,7 +6,6 @@ import type { HostPolicy, Resolver } from '../security/ssrf.js';
 import { SESSION_COOKIE, type Session, type SessionStore } from '../session/store.js';
 import { renderErrorPage, type ErrorPageOptions } from '../pages/errors.js';
 import { getDomain } from 'tldts';
-import type { AdBlocker } from '../adblock/index.js';
 
 export interface Deps {
   resolver: Resolver;
@@ -25,7 +24,6 @@ export interface AppContext {
   sessionRate: RateLimiter;
   gate: ConcurrencyGate;
   wsCounter: ConnectionCounter;
-  adblock: AdBlocker;
   deps: Deps;
 }
 

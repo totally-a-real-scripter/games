@@ -20,13 +20,12 @@ It is built to **not** become an open server-side request relay: every destinati
 5. [Deploying with Docker](#deploying-with-docker)
 6. [Deploying on Coolify](#deploying-on-coolify)
 7. [AI assistant](#ai-assistant)
-8. [Ad blocker](#ad-blocker)
-9. [Behind Nginx](#behind-nginx)
-10. [Behind Cloudflare](#behind-cloudflare)
-11. [Security model](#security-model)
-12. [Security review checklist](#security-review-checklist)
-13. [Limitations](#limitations)
-14. [Development and tests](#development-and-tests)
+8. [Behind Nginx](#behind-nginx)
+9. [Behind Cloudflare](#behind-cloudflare)
+10. [Security model](#security-model)
+11. [Security review checklist](#security-review-checklist)
+12. [Limitations](#limitations)
+13. [Development and tests](#development-and-tests)
 
 ---
 
@@ -113,13 +112,11 @@ npm run dev
 │   │   └── css.ts             url() / @import rewriter
 │   ├── ai/chat.ts             AI assistant backend (streaming, failover, cooldowns)
 │   ├── ai/providers.ts        free-tier presets + custom OpenAI-compatible providers
-│   ├── adblock/index.ts       ad blocker: domain lists, YouTube ad removal
 │   ├── session/store.ts       server-side cookie jars
 │   ├── pages/errors.ts        escaped error pages
 │   └── util/log.ts            JSON logger
 └── test/
     ├── security.test.ts       SSRF matrix, codecs, rewriters, limits
-    ├── adblock.test.ts        ad blocking, YouTube ad removal, shield toggle
     ├── ai.test.ts             AI endpoint: streaming, failover, cooldowns, validation, CSRF, quotas
     └── integration.test.ts    end-to-end proxy against a live local upstream
 ```
@@ -359,24 +356,6 @@ Coolify notes:
 
 ---
 
-## Ad blocker
-
-On by default. The **shield** button in the toolbar turns it off or on for each visitor, and the choice is remembered in their browser.
-
-- **Blocks ads and trackers on the server.** Every image, script, frame and data request a page makes goes through the proxy. Requests to known ad and tracker domains get an empty response of the right type (blank script, transparent image, empty frame) and never leave the server. This also saves bandwidth.
-  - The domain list is a built-in list of major ad networks and trackers, plus [StevenBlack's hosts list](https://github.com/StevenBlack/hosts) (about 100,000 domains), downloaded at startup and daily.
-  - Change the lists with `ADBLOCK_LISTS`, or set `none` for the built-in list only.
-- **Hides empty ad slots** left on pages (Google ad boxes, Taboola/Outbrain widgets and similar).
-- **YouTube:** YouTube's ads come from the same servers as its videos, so they can't be blocked by domain. Veil does what browser ad blockers do:
-  - It removes the ad schedule (`adPlacements`, `playerAds`, `adSlots`) from YouTube's player and feed data, both in API responses and in the data embedded in the page. The player never gets told to play ads.
-  - It removes promoted results and ad cards from the home feed, search and sidebar, and blocks YouTube's ad-only endpoints.
-  - As a fallback, if an ad still starts, it's muted, skipped to the end and the Skip button is pressed.
-  - It removes the "ad blockers are not allowed" popup data and closes that dialog if it appears.
-- If a visitor types or opens an ad/tracker address themselves, it loads normally. Clicking an ad link inside a page shows a short "Blocked by the ad blocker" page instead.
-- If a site breaks, add its domain to `ADBLOCK_ALLOW`, or turn the shield off for a moment.
-
-> YouTube regularly changes how it delivers ads to defeat ad blockers. What works today may need updating later; the YouTube rules live in `src/adblock/index.ts` (server side) and `public/client.js` (in page).
-
 ## Behind Nginx
 
 A complete example is in [`deploy/nginx.conf`](deploy/nginx.conf). The essentials:
@@ -392,7 +371,7 @@ location / {
     proxy_set_header Connection $connection_upgrade;
     proxy_buffering off;                               # stream downloads/media
     proxy_request_buffering off;
-    proxy_read_timeout 600s;
+    proxy_read_timeout 180s;
     client_max_body_size 10m;                          # = MAX_REQUEST_BODY_BYTES
 }
 ```

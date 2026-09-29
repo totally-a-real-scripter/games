@@ -1,4 +1,3 @@
-process.env.ADBLOCK_LISTS = 'none'; // never download blocklists in tests
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';

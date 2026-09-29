@@ -6,7 +6,6 @@
  * so every policy check runs for real, and use the post-validation `dial`
  * hook to point the socket at the local server.
  */
-process.env.ADBLOCK_LISTS = 'none'; // never download blocklists in tests
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';

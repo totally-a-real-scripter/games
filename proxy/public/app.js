@@ -2,25 +2,6 @@
 (function () {
   'use strict';
 
-  // Safety net: this shell must never load inside its own page viewport. That
-  // happens when a proxied page moves its address out of /p/ (e.g. to "/") and
-  // then reloads: the frame would get another copy of the shell, which loads the
-  // site again, and so on until the browser runs out of memory. Send the frame
-  // back to the site it was showing instead.
-  try {
-    if (window.parent !== window && window.frameElement && window.frameElement.id === 'frame' &&
-        window.parent.document.getElementById('frame') === window.frameElement) {
-      var shown = window.parent.Veil && window.parent.Veil.current ? window.parent.Veil.current() : null;
-      var back = null;
-      try {
-        var su = shown ? new URL(shown) : null;
-        if (su && /^https?:$/.test(su.protocol)) back = '/p/' + su.protocol.slice(0, -1) + '/' + su.host + su.pathname + su.search + su.hash;
-      } catch (err) {}
-      location.replace(back || 'about:blank');
-      return;
-    }
-  } catch (e) {}
-
   var $ = function (id) { return document.getElementById(id); };
   var body = document.body;
   var frame = $('frame');
@@ -243,45 +224,11 @@
   if (location.hash.length > 1) {
     try { initial = new URL(decodeURIComponent(location.hash.slice(1))); } catch (e) { initial = null; }
   }
-  // ---- ad blocker shield ----
-  var shield = $('btn-shield');
-  var adblockOn = false;
-  function renderShield(info) {
-    shield.classList.toggle('on', adblockOn);
-    shield.classList.toggle('off', !adblockOn);
-    shield.setAttribute('aria-pressed', String(adblockOn));
-    shield.title = adblockOn
-      ? 'Ad blocker on' + (info && info.domains ? ' (' + info.domains.toLocaleString() + ' ad and tracker domains)' : '') + '. Click to turn off.'
-      : 'Ad blocker off. Click to turn on.';
-  }
-  fetch('/__px/adblock/status', { credentials: 'same-origin' })
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (info) {
-      if (!info || !info.available) return;
-      adblockOn = !!info.on;
-      shield.hidden = false;
-      renderShield(info);
-      shield._info = info;
-    })
-    .catch(function () {});
-  shield.addEventListener('click', function () {
-    adblockOn = !adblockOn;
-    // A plain preference cookie read by the server (not a secret).
-    document.cookie = 'px_ab=' + (adblockOn ? '1' : '0') + '; Path=/; Max-Age=31536000; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
-    renderShield(shield._info);
-    toast(adblockOn ? 'Ad blocker on' : 'Ad blocker off');
-    if (current) {
-      startLoading();
-      try { frame.contentWindow.location.reload(); } catch (e) { frame.src = encode(current); }
-    }
-  });
-
   window.Veil = {
     base: BASE,
     embedded: EMBEDDED,
     go: go,
     mainUrl: mainUrl,
-    current: function () { return current ? current.href : null; },
     restoreTitle: function () { document.title = pageTitle; },
   };
   if (initial && /^https?:$/.test(initial.protocol)) go(initial);

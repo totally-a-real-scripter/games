@@ -7,7 +7,6 @@
  */
 import { randomBytes } from 'node:crypto';
 import { loadProviders, type AiProvider } from './ai/providers.js';
-import type { AdblockConfig } from './adblock/index.js';
 
 export interface AiConfig {
   enabled: boolean;
@@ -95,9 +94,6 @@ export interface Config {
 
   // --- AI assistant (any OpenAI-compatible chat API) ------------------------
   ai: AiConfig;
-
-  // --- Ad blocker ------------------------------------------------------------
-  adblock: AdblockConfig;
   /** Random per-process id used to detect requests looping back through us. */
   instanceId: string;
 }
@@ -264,21 +260,6 @@ export function loadConfig(): Config {
     ),
     logRequests: bool('LOG_REQUESTS', false),
     ai: loadAiConfig(),
-    adblock: {
-      enabled: bool('ADBLOCK_ENABLED', true),
-      defaultOn: bool('ADBLOCK_DEFAULT_ON', true),
-      // Extra downloadable lists (hosts files, domain lists or "||domain^" lists). "none" = built-in list only.
-      lists: (() => {
-        const raw = str('ADBLOCK_LISTS', 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts');
-        if (raw.toLowerCase() === 'none') return [];
-        const urls = raw.split(/[,\s]+/).filter(Boolean);
-        for (const u of urls) if (!/^https:\/\//i.test(u)) throw new Error(`ADBLOCK_LISTS entries must be https URLs: ${u}`);
-        return urls;
-      })(),
-      allow: list('ADBLOCK_ALLOW'),
-      block: list('ADBLOCK_BLOCK'),
-      refreshHours: int('ADBLOCK_REFRESH_HOURS', 24, 1, 24 * 30),
-    },
     instanceId: randomBytes(8).toString('hex'),
   };
 }
