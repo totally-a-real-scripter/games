@@ -603,42 +603,42 @@
         return r;
       };
 
-      // Last resort: if a video ad still starts, mute it, hurry it along and
-      // press Skip. Only a short, separate ad clip is jumped to its end: when
-      // YouTube splices the ad into the video's own stream, the <video> is the
-      // real video, so seeking to its end would skip the whole thing. Sound and
-      // speed are put back when the ad is over.
+      // Last resort: if a video ad still starts, mute it and press Skip. A short,
+      // separate ad clip is jumped to its end once; nothing else is touched.
+      // (Speeding the video up or seeking repeatedly makes Chrome's media
+      // pipeline fetch and decode far faster than normal and can crash the tab
+      // when YouTube splices the ad into the video's own stream.)
       var SKIP = '.ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button-slot button';
-      var adState = null; // { v, muted, rate } while an ad is being handled
+      var adState = null; // { v, muted, jumped } while an ad is being handled
       setInterval(function () {
         try {
           var player = document.querySelector('.html5-video-player');
           var inAd = !!player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'));
           var v = player && player.querySelector('video');
           if (inAd && v) {
-            if (!adState || adState.v !== v) adState = { v: v, muted: v.muted, rate: v.playbackRate };
-            v.muted = true;
-            if (isFinite(v.duration) && v.duration > 0 && v.duration <= 180) {
-              if (v.currentTime < v.duration - 0.25) v.currentTime = v.duration - 0.1;
-            } else if (v.playbackRate < 8) {
-              v.playbackRate = 8;
+            if (!adState || adState.v !== v) adState = { v: v, muted: v.muted, jumped: false };
+            if (!v.muted) v.muted = true;
+            if (!adState.jumped && isFinite(v.duration) && v.duration > 0 && v.duration <= 60 && v.currentTime < v.duration - 1) {
+              adState.jumped = true;
+              v.currentTime = v.duration - 0.1;
             }
-            if (v.paused) v.play().catch(function () {});
             var b = document.querySelector(SKIP);
             if (b) b.click();
           } else if (adState) {
-            try { adState.v.muted = adState.muted; adState.v.playbackRate = adState.rate || 1; } catch (e2) {}
+            try { adState.v.muted = adState.muted; } catch (e2) {}
             adState = null;
           }
           // Close the "ad blockers are not allowed" dialog if it ever appears.
           var enf = document.querySelector('ytd-enforcement-message-view-model');
           if (enf) {
             var dlg = enf.closest('tp-yt-paper-dialog');
-            if (dlg) dlg.remove();
+            var blocking = !!dlg;
+            (dlg || enf).remove(); // removed, so this runs once per popup
             var bd = document.querySelector('tp-yt-iron-overlay-backdrop');
             if (bd) bd.remove();
+            // The popup pauses the video; resume it once (never fight the user's own pause).
             var mv = document.querySelector('#movie_player video');
-            if (mv && mv.paused) mv.play().catch(function () {});
+            if (blocking && mv && mv.paused) mv.play().catch(function () {});
           }
         } catch (e) {}
       }, 250);

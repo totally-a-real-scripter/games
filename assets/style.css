@@ -54,6 +54,20 @@ svg.i .dot{fill:currentColor;stroke:none}
 /* category rail */
 .rail{max-width:var(--wrap);margin:0 auto;display:flex;gap:8px;padding:0 20px 12px;overflow-x:auto;scrollbar-width:none}
 .rail::-webkit-scrollbar{display:none}
+/* Mouse users: the wheel scrolls the tabs sideways, they can be dragged, and arrows appear at an edge with more tabs. */
+.rail-wrap{position:relative;max-width:var(--wrap);margin:0 auto}
+.rail.dragging{cursor:grabbing;user-select:none}
+.rail.dragging a{pointer-events:none}
+.rail a{-webkit-user-drag:none}
+.rail-arrow{position:absolute;top:0;bottom:12px;z-index:2;display:none;align-items:center;width:56px;padding:0 10px;border:0;cursor:pointer;color:var(--ink);background:transparent}
+.rail-arrow.l{left:0;justify-content:flex-start;background:linear-gradient(90deg,var(--paper) 40%,transparent)}
+.rail-arrow.r{right:0;justify-content:flex-end;background:linear-gradient(270deg,var(--paper) 40%,transparent)}
+.rail-arrow .ra{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);box-shadow:2px 2px 0 var(--shadow-c);transition:transform .12s}
+.rail-arrow:hover .ra{transform:scale(1.08)}
+.rail-arrow .ra svg{width:15px;height:15px}
+.rail-arrow.l .ra svg{transform:rotate(180deg)}
+.rail-wrap.can-l .rail-arrow.l,.rail-wrap.can-r .rail-arrow.r{display:flex}
+@media (hover:none){.rail-wrap .rail-arrow{display:none}}
 .rail .sep{flex:none;width:2px;margin:4px 4px;background:var(--line);opacity:.35;border-radius:2px}
 .pill{flex:none;display:inline-flex;align-items:center;gap:7px;padding:7px 13px 7px 10px;border:1.5px solid var(--line);border-radius:999px;font-size:13.5px;font-weight:600;background:var(--surface);transition:background .12s,transform .12s}
 .pill svg.i{width:16px;height:16px;color:var(--c,var(--ink))}
@@ -218,6 +232,7 @@ svg.i .dot{fill:currentColor;stroke:none}
 @media (max-width:620px){
   .top-inner{gap:8px;padding:10px 14px}
   .rail{padding:0 14px 10px}
+  .rail-arrow{bottom:10px}
   .logo-box{font-size:15px;padding:5px 8px 6px}
   .search kbd{display:none}
   .main{padding:18px 14px 50px}
@@ -547,7 +562,7 @@ textarea.ch-in{height:auto;padding:8px 10px;font-family:var(--mono);font-size:12
 .veil-btn.on svg.i{stroke:var(--paper)}
 .veil-stage{position:fixed;left:0;right:0;bottom:0;top:var(--veil-top,70px);z-index:45;background:#06070b}
 .veil-stage iframe{display:block;width:100%;height:100%;border:0;background:#06070b}
-html.veil-on .rail,html.veil-on .main{display:none}
+html.veil-on .rail-wrap,html.veil-on .main{display:none}
 html.veil-on body{overflow:hidden}
 @media (max-width:900px){
   .veil-btn{width:42px;padding:0;justify-content:center}

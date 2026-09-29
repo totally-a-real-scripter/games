@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=2026-09-28-4">
+  <link rel="stylesheet" href="assets/style.css?v=2026-09-28-5">
   <script>
     /* Tab cloak: apply the saved tab name + icon before the page paints (set in Settings, see CLOAKS in app.js). */
     try { var cl = JSON.parse(localStorage.getItem('sig:cloak')); if (cl && cl.title) { document.title = cl.title; var fi = document.querySelector('link[rel~="icon"]'); if (fi) { fi.removeAttribute('type'); fi.href = cl.icon; } } } catch (e) {}
@@ -51,13 +51,17 @@
       <button class="tbtn" id="randomBtn" title="Random game"><span id="randomIco"></span><span class="tbtn-label">Surprise me</span></button>
       <button class="tbtn icon-only" id="settingsBtn" title="Settings" aria-label="Settings"></button>
     </div>
-    <nav class="rail" id="rail" aria-label="Browse"></nav>
+    <div class="rail-wrap" id="railWrap">
+      <button class="rail-arrow l" id="railL" type="button" tabindex="-1" aria-label="Scroll tabs left"></button>
+      <nav class="rail" id="rail" aria-label="Browse"></nav>
+      <button class="rail-arrow r" id="railR" type="button" tabindex="-1" aria-label="Scroll tabs right"></button>
+    </div>
   </header>
 
   <main id="app" class="main" tabindex="-1"></main>
 
   <dialog class="settings" id="settings" aria-labelledby="setTitle"></dialog>
 
-  <script src="assets/app.js?v=2026-09-28-4"></script>
+  <script src="assets/app.js?v=2026-09-28-5"></script>
 </body>
 </html>

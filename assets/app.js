@@ -323,6 +323,57 @@ function renderRail(active) {
     '<span class="sep"></span>' +
     GENRES.map(([n, i, c]) => pill('#/c/' + slugify(n), i, c, n)).join('');
   const a = $('#rail .active'); if (a) a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  requestAnimationFrame(updateRailArrows);
+}
+function updateRailArrows() {
+  const rail = $('#rail'), wrap = $('#railWrap'); if (!rail || !wrap) return;
+  const max = rail.scrollWidth - rail.clientWidth;
+  wrap.classList.toggle('can-l', rail.scrollLeft > 2);
+  wrap.classList.toggle('can-r', rail.scrollLeft < max - 2);
+}
+// The tab row scrolls sideways with its scrollbar hidden, which a mouse can't do on its own:
+// turn the wheel into sideways scrolling, allow click-and-drag, and add edge arrows.
+function setupRail() {
+  const rail = $('#rail'); if (!rail) return;
+  rail.addEventListener('scroll', updateRailArrows, { passive: true });
+  addEventListener('resize', updateRailArrows);
+  rail.addEventListener('wheel', e => {
+    if (e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return; // pinch zoom, or a sideways touchpad swipe (native)
+    const max = rail.scrollWidth - rail.clientWidth; if (max <= 0) return;
+    const d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rail.clientWidth : 1);
+    if ((d < 0 && rail.scrollLeft <= 0) || (d > 0 && rail.scrollLeft >= max - 1)) return; // at the end: let the page scroll
+    e.preventDefault();
+    rail.scrollLeft += d;
+  }, { passive: false });
+  const step = dir => rail.scrollBy({ left: dir * Math.max(160, rail.clientWidth * 0.7), behavior: settings.motion === false ? 'auto' : 'smooth' });
+  $('#railL').innerHTML = $('#railR').innerHTML = `<span class="ra">${ic('chevron')}</span>`;
+  $('#railL').onclick = () => step(-1);
+  $('#railR').onclick = () => step(1);
+  // Click-and-drag with the mouse (touch already swipes natively).
+  let drag = null;
+  rail.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    drag = { x: e.clientX, left: rail.scrollLeft, id: e.pointerId, moved: false };
+  });
+  rail.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) > 5) { drag.moved = true; rail.classList.add('dragging'); try { rail.setPointerCapture(drag.id); } catch (err) {} }
+    if (drag.moved) rail.scrollLeft = drag.left - dx;
+  });
+  const end = () => {
+    if (!drag) return;
+    if (drag.moved) {
+      // Swallow the click that ends a drag so it doesn't open a tab.
+      const block = ev => { ev.preventDefault(); ev.stopPropagation(); };
+      addEventListener('click', block, { capture: true, once: true });
+      setTimeout(() => removeEventListener('click', block, { capture: true }), 0);
+    }
+    rail.classList.remove('dragging'); drag = null;
+  };
+  rail.addEventListener('pointerup', end);
+  rail.addEventListener('pointercancel', end);
+  rail.addEventListener('dragstart', e => e.preventDefault());
 }
 
 /* ---------- home ---------- */
@@ -1836,6 +1887,7 @@ function wireSettings() {
 /* ---------- boot ---------- */
 async function boot() {
   $('#brandA').textContent = CONFIG.brand[0]; $('#brandB').textContent = CONFIG.brand[1];
+  setupRail();
   $('#randomIco').outerHTML = ic('shuffle');
   $('#browseIco').outerHTML = ic('globe');
   $('#aiIco').outerHTML = ic('sparkles');
