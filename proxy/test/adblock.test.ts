@@ -99,8 +99,9 @@ test('YouTube embedded page data is pruned safely', () => {
   // Scripts without ad data are returned unchanged.
   assert.equal(pruneYouTubeInlineScript('var x = {"a":1};'), 'var x = {"a":1};');
   assert.ok(isYouTubeAdCarrier(new URL('https://www.youtube.com/youtubei/v1/player?prettyPrint=false')));
-  assert.ok(isYouTubeAdCarrier(new URL('https://www.youtube.com/youtubei/v1/player/ad_break')));
-  assert.ok(isYouTubeAdCarrier(new URL('https://www.youtube.com/get_midroll_info?ei=x')));
+  // Ad-break answers are left alone: pruning them makes the player re-ask in a loop.
+  assert.ok(!isYouTubeAdCarrier(new URL('https://www.youtube.com/youtubei/v1/player/ad_break')));
+  assert.ok(!isYouTubeAdCarrier(new URL('https://www.youtube.com/get_midroll_info?ei=x')));
   assert.ok(!isYouTubeAdCarrier(new URL('https://www.youtube.com/youtubei/v1/log_event')));
 });
 
@@ -211,12 +212,12 @@ describe('ad blocker through the proxy', () => {
     assert.match(html, /&quot;adblock&quot;:true/); // runtime gets the flag for cosmetic hiding + skipper
     r = await fetch(`${base}/p/http/www.youtube.com/api/stats/ads?ver=2`, { headers: { 'sec-fetch-dest': 'empty', referer: `${base}/p/http/www.youtube.com/watch?v=abc` } });
     assert.equal(r.status, 204);
-    // Mid-roll ad break: answered (so the stream carries on) but without the ad.
+    // Ad break: passed through untouched (neither blocked nor pruned).
     r = await fetch(`${base}/p/http/www.youtube.com/youtubei/v1/player/ad_break?prettyPrint=false`, {
       method: 'POST', body: '{}', headers: { 'content-type': 'application/json', 'sec-fetch-dest': 'empty', referer: `${base}/p/http/www.youtube.com/watch?v=abc` },
     });
     assert.equal(r.status, 200);
-    assert.deepEqual(await r.json(), { responseContext: { a: 1 } });
+    assert.deepEqual(await r.json(), { responseContext: { a: 1 }, adPlacements: [{ ad: 1 }], adBreakHeartbeatParams: 'x' });
     // Shield off: YouTube data is left untouched.
     r = await fetch(`${base}/p/http/www.youtube.com/youtubei/v1/player`, { method: 'POST', body: '{}', headers: { cookie: 'px_ab=0' } });
     assert.ok((await r.json()).adPlacements);

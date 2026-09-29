@@ -60,10 +60,11 @@ export const BUILTIN_BLOCKLIST = [
 /** Paths that only serve ads/ad tracking on otherwise-needed hosts (YouTube). */
 const PATH_RULES: { host: RegExp; path: RegExp }[] = [
   { host: /(^|\.)youtube\.com$/, path: /^\/(pagead\/|api\/stats\/ads|ptracking|sw\.js_data\/?$)/ },
-  // Not blocked on purpose: /youtubei/v1/player/ad_break and /get_midroll_info.
-  // The player waits on these at a mid-roll slot and the video stream pauses
-  // until they answer, so blocking them makes videos stop a few minutes in.
-  // Their responses are pruned instead (see isYouTubeAdCarrier).
+  // Not blocked or changed on purpose: /youtubei/v1/player/ad_break and
+  // /get_midroll_info. The player waits on these (the video stream pauses until
+  // they answer), and an answer with the ads cut out makes it ask again in a
+  // tight loop that freezes and crashes the tab. They pass through untouched;
+  // any ad they start is muted and skipped by the page runtime instead.
   { host: /(^|\.)youtube-nocookie\.com$/, path: /^\/(pagead\/|api\/stats\/ads|ptracking)/ },
   { host: /(^|\.)google\.com$/, path: /^\/(pagead\/|ads\/|adsense\/)/ },
 ];
@@ -239,7 +240,7 @@ export function isYouTubeHost(hostname: string): boolean {
 
 /** YouTube JSON API responses that can carry ads (player, feed, watch page, search, shorts). */
 export function isYouTubeAdCarrier(url: URL): boolean {
-  return isYouTubeHost(url.hostname) && (/^\/youtubei\/v1\/(player|next|browse|search|reel\/reel_watch_sequence|reel\/reel_item_watch|guide)/.test(url.pathname) || url.pathname === '/get_midroll_info');
+  return isYouTubeHost(url.hostname) && /^\/youtubei\/v1\/(player|next|browse|search|reel\/reel_watch_sequence|reel\/reel_item_watch|guide)\/?$/.test(url.pathname);
 }
 
 /** Keys whose values are ads (or the anti-adblock popup) in YouTube's data. */

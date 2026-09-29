@@ -598,7 +598,9 @@
       JSON.parse = function () {
         var r = nativeParse.apply(this, arguments);
         try {
-          if (r && typeof r === 'object' && (r.adPlacements || r.playerAds || r.adSlots || r.playerResponse || r.auxiliaryUi)) prune(r, 0);
+          // Only whole player/page responses. Never the player's ad-break answers
+          // (no videoDetails/playerResponse): stripping those makes it re-ask in a loop.
+          if (r && typeof r === 'object' && (r.videoDetails || r.playerResponse) && (r.adPlacements || r.playerAds || r.adSlots || r.playerResponse)) prune(r, 0);
         } catch (e) {}
         return r;
       };
