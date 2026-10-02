@@ -39,7 +39,7 @@ svg.i .dot{fill:currentColor;stroke:none}
 .search input::placeholder{color:var(--muted)}
 .search input:focus{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--tomato)}
 .search kbd{position:absolute;right:14px;font-family:var(--mono);font-size:12px;border:1.5px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--muted)}
-.suggest{position:absolute;top:56px;left:0;right:0;background:var(--surface);border:var(--bw) solid var(--line);border-radius:14px;box-shadow:5px 5px 0 var(--shadow-c);padding:6px;max-height:440px;overflow:auto}
+.suggest{position:absolute;z-index:30;top:56px;left:0;right:0;background:var(--surface);border:var(--bw) solid var(--line);border-radius:14px;box-shadow:5px 5px 0 var(--shadow-c);padding:6px;max-height:440px;overflow:auto}
 .suggest a{display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:9px;font-weight:600}
 .suggest a:hover,.suggest a.active{background:var(--paper-2)}
 .suggest img{width:76px;height:43px;border-radius:7px;object-fit:cover;border:1.5px solid var(--line)}

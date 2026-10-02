@@ -292,7 +292,22 @@ const fromSlugs = arr => arr.map(s => BY_SLUG.get(s)).filter(Boolean);
 /* ---------- small renderers ---------- */
 const genreInfo = n => GENRES.find(x => x[0] === n) || [n, 'gamepad', '#ffc93c'];
 const platLabel = g => g.k === 'Retro' ? g.pl : g.k === 'Web' ? 'Web' : 'Flash';
-const img = (src, extra = '') => `<img src="${encPath(src)}" alt="" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.style.visibility='hidden'" ${extra}>`;
+// Game pictures are 480x270, but most are shown far smaller, and a browser keeps every decoded picture in
+// memory (480x270 = ~0.5 MB each). The Docker build makes 240px and 360px copies in thumbs/ (see Dockerfile);
+// srcset lets the browser pick the smallest one that is still sharp for the card's size and the screen's pixel
+// density. If a copy is missing, the picture falls back to the original.
+const THUMB_WIDTHS = [240, 360];
+const CARD_SIZES = '(max-width: 620px) 48vw, (max-width: 1200px) 300px, 230px';
+function thumbSrcset(src) {
+  if (typeof src !== 'string' || !src.startsWith('thumbnails/')) return '';
+  const rest = src.slice('thumbnails/'.length);
+  return THUMB_WIDTHS.map(w => `${encPath(`thumbs/${w}/${rest}`)} ${w}w`).join(', ') + `, ${encPath(src)} 480w`;
+}
+const THUMB_FALLBACK = "if(this.hasAttribute('srcset')){this.removeAttribute('srcset')}else{this.style.visibility='hidden'}";
+const img = (src, sizes = CARD_SIZES) => {
+  const set = thumbSrcset(src);
+  return `<img src="${encPath(src)}"${set ? ` srcset="${set}" sizes="${sizes}"` : ''} alt="" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="${THUMB_FALLBACK}">`;
+};
 function card(g) {
   const sticker = g.pop ? '<span class="sticker hot">Hot</span>' : '';
   const fav = favs.has(g.slug) ? `<span class="fav-mark">${ic('heart')}</span>` : '';
@@ -397,7 +412,7 @@ function pageHome() {
       </a>
       <div class="lineup">
         <div class="lineup-head"><h2>Also dropping today</h2><span class="clock" id="clock"></span></div>
-        <ol>${lineup.map((g, i) => `<li><a href="#/play/${g.slug}"><span class="num">0${i + 1}</span>${img(gi(g))}<span><b>${esc(g.t)}</b><span class="label">${esc(platLabel(g))} · ${esc(g.g[0])}</span></span></a></li>`).join('')}</ol>
+        <ol>${lineup.map((g, i) => `<li><a href="#/play/${g.slug}"><span class="num">0${i + 1}</span>${img(gi(g), '110px')}<span><b>${esc(g.t)}</b><span class="label">${esc(platLabel(g))} · ${esc(g.g[0])}</span></span></a></li>`).join('')}</ol>
       </div>
     </section>
 
@@ -410,7 +425,7 @@ function pageHome() {
     </section>
 
     <section class="block">${head('The ones everyone keeps playing', 'Top 10 today', '#/popular')}
-      <div class="charts">${charts.map((g, i) => `<a class="chart-row" href="#/play/${g.slug}"><span class="rank">${i + 1}</span>${img(gi(g))}<span><b>${esc(g.t)}</b><span class="label">${esc(platLabel(g))} · ${esc(g.g[0])}</span></span></a>`).join('')}</div>
+      <div class="charts">${charts.map((g, i) => `<a class="chart-row" href="#/play/${g.slug}"><span class="rank">${i + 1}</span>${img(gi(g), '120px')}<span><b>${esc(g.t)}</b><span class="label">${esc(platLabel(g))} · ${esc(g.g[0])}</span></span></a>`).join('')}</div>
     </section>
 
     <section class="block">${head('Browse the shelves', 'By category')}
@@ -613,7 +628,7 @@ function pagePlay(slug) {
         </div>
         <section class="block" style="margin-top:40px">${head('If you like this one', 'More like it')}<div class="grid g4">${sim.slice(6, 14).map(card).join('')}</div></section>
       </div>
-      <aside class="upnext"><h2>Up next</h2>${sim.slice(0, 6).map(x => `<a href="#/play/${x.slug}">${img(gi(x))}<span><b>${esc(x.t)}</b><small>${esc(platLabel(x))}</small></span></a>`).join('')}</aside>
+      <aside class="upnext"><h2>Up next</h2>${sim.slice(0, 6).map(x => `<a href="#/play/${x.slug}">${img(gi(x), '115px')}<span><b>${esc(x.t)}</b><small>${esc(platLabel(x))}</small></span></a>`).join('')}</aside>
     </div>${footer()}`;
   const start = () => {
     if (settings.newtab) { openGameTab(g); return false; }
@@ -1667,11 +1682,54 @@ function markVeilButtons(view) {
     if (b) { b.classList.toggle('on', view === v); b.setAttribute('aria-pressed', view === v ? 'true' : 'false'); }
   }
 }
+// Leaving Browse/AI keeps the proxy (and the AI chat) alive, but the site you were browsing can be heavy:
+// its videos and sounds are paused at once, and after VEIL_PARK_MS away it is unloaded ("parked") to free its
+// memory. Coming back to Browse reopens the same page.
+const VEIL_PARK_MS = 45000;
+function veilInner() {
+  try { return VEIL.frame.contentWindow.document.getElementById('frame'); } catch (e) { return null; }
+}
+function veilPauseMedia(win, depth = 0) {
+  try {
+    win.document.querySelectorAll('video, audio').forEach(m => { try { m.pause(); } catch (e) {} });
+    for (let i = 0; i < win.frames.length && depth < 4; i++) veilPauseMedia(win.frames[i], depth + 1);
+  } catch (e) {}
+}
+function veilPark() {
+  const f = veilInner(); if (!f) return;
+  let back = null;
+  try {
+    // The proxy knows the real address even when the site rewrote its own (e.g. YouTube's /watch?v=...).
+    const main = VEIL.frame.contentWindow.Veil.mainUrl();
+    const real = new URL(decodeURIComponent(main.split('#')[1] || ''));
+    if (/^https?:$/.test(real.protocol)) back = '/p/' + real.protocol.slice(0, -1) + '/' + real.host + real.pathname + real.search + real.hash;
+  } catch (e) {}
+  if (!back) { try { const h = f.contentWindow.location; if (h.pathname.startsWith('/p/')) back = h.pathname + h.search + h.hash; } catch (e) {} }
+  if (!back) return;
+  VEIL.parked = back;
+  f.src = 'about:blank';
+}
+function veilWake() {
+  clearTimeout(VEIL.parkTimer);
+  if (!VEIL.parked) return;
+  const f = veilInner();
+  if (f) f.src = VEIL.parked;
+  VEIL.parked = null;
+}
 function showVeil(view) {
   const st = veilStage();
   document.documentElement.classList.toggle('veil-on', !!view);
   markVeilButtons(view);
-  if (!view) { st.hidden = true; return; }
+  if (!view) {
+    if (VEIL.frame && !st.hidden) {
+      veilPauseMedia(VEIL.frame.contentWindow);
+      clearTimeout(VEIL.parkTimer);
+      VEIL.parkTimer = setTimeout(veilPark, VEIL_PARK_MS);
+    }
+    st.hidden = true; return;
+  }
+  clearTimeout(VEIL.parkTimer);
+  if (view === 'browse') veilWake();
   setTitle((view === 'ai' ? 'AI' : 'Browse') + ' · ' + BRAND);
   placeVeil();
   st.hidden = false;
@@ -1694,6 +1752,7 @@ addEventListener('message', e => {
   const d = e.data;
   if (!d || d.veilShell !== 1 || (d.view !== 'ai' && d.view !== 'browse')) return;
   VEIL.view = d.view;
+  if (d.view === 'browse') veilWake();
   if (CUR === '#/browse' || CUR === '#/ai') {
     CUR = '#/' + d.view;
     try { history.replaceState({ sig: CUR }, '', location.pathname + location.search); } catch (err) {}
@@ -1740,7 +1799,7 @@ function wireSearch() {
     const q = input.value.trim().toLowerCase(); sel = -1;
     if (q.length < 2) { box.hidden = true; return; }
     const hits = GAMES.filter(g => g.t.toLowerCase().includes(q)).sort((a, b) => (b.t.toLowerCase().startsWith(q)) - (a.t.toLowerCase().startsWith(q)) || (b.pop || 0) - (a.pop || 0)).slice(0, 7);
-    box.innerHTML = hits.map(g => `<a href="#/play/${g.slug}"><img src="${encPath(gi(g))}" alt=""><span>${esc(g.t)}<div class="s-meta">${esc(platLabel(g))}</div></span></a>`).join('') +
+    box.innerHTML = hits.map(g => `<a href="#/play/${g.slug}">${img(gi(g), '80px')}<span>${esc(g.t)}<div class="s-meta">${esc(platLabel(g))}</div></span></a>`).join('') +
       `<a class="s-all" href="#/search/${encodeURIComponent(input.value.trim())}">See every match for “${esc(input.value.trim())}”</a>`;
     box.hidden = false;
   };

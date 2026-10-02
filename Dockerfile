@@ -10,6 +10,16 @@ COPY proxy/tsconfig.json ./
 COPY proxy/src ./src
 RUN npx tsc -p tsconfig.json
 
+# ---- smaller copies of the game pictures (240px and 360px wide) ----
+# Cards show pictures far smaller than the 480x270 originals, and browsers keep every decoded picture in
+# memory, so the site offers these copies via srcset (assets/app.js). Never fatal: if this step can't run,
+# the folder stays empty and the site simply uses the originals.
+FROM alpine:3.20 AS thumbs
+RUN apk add --no-cache imagemagick imagemagick-jpeg || true
+COPY thumbnails/ /src/
+COPY docker/make-thumbs.sh /make-thumbs.sh
+RUN sed -i 's/\r$//' /make-thumbs.sh && sh /make-thumbs.sh /src /out || true; mkdir -p /out
+
 # ---- runtime: Node for the proxy + nginx for the site ----
 FROM node:22-alpine
 # nginx from Alpine's packages, with our own main config (docker/nginx-main.conf) replacing Alpine's.
@@ -35,6 +45,7 @@ COPY proxy/public ./public
 COPY index.html login.html games.json /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/
 COPY thumbnails/ /usr/share/nginx/html/thumbnails/
+COPY --from=thumbs /out/ /usr/share/nginx/html/thumbs/
 COPY UGS-Files/ /usr/share/nginx/html/UGS-Files/
 
 # Requests reach the proxy through Coolify's proxy and then nginx: two hops in X-Forwarded-For.
