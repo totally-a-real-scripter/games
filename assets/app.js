@@ -594,7 +594,7 @@ function closeGame() {
   const st = $('#stage'); if (!st) return;
   $('#stageFrame').innerHTML = '';
   player.g = null; setMode('off');
-  CHEAT.frozen.clear(); if (CHEAT.open) renderCheatPanel();
+  resetScan(); CHEAT.list = []; if (CHEAT.open) renderCheatPanel();
   if (CUR.startsWith('#/play/')) route();
 }
 
@@ -1137,12 +1137,14 @@ function codesSettingsHtml() {
    Nothing here can change games whose data lives on someone else's server, or games that load from another website. */
 const CHEAT = {
   open: false, tab: 'speed', speed: 1,
-  scan: null,          // { kind: 'mem'|'var', type, hits: Uint32Array | Array, prev, count }
-  frozen: new Map(),   // key -> { set(), label }
+  scan: null,          // current scan: { kind: 'mem'|'var', type, hits, prev, count } or, for "unknown value", { dense, snap, mask }
+  history: [],         // earlier scans, for Undo
+  list: [],            // saved values (the List tab): { id, name, kind, type, i | o,k,path, frozen, fx }
+  form: { mode: 'exact', type: 'any', val: '', val2: '' },
   saveSnap: null,      // localStorage values when the game started, to mark what the game changed
   cheats: [],          // emulator codes: { code, desc, on }
-  busy: false, timer: 0,
-  picked: new Set()     // ticked scan results, for setting several at once
+  busy: false, progress: 0, cancel: false, timer: 0, live: 0, nextId: 1,
+  picked: new Set()    // ticked scan results, for acting on several at once
 };
 const cheatsOn = () => hasEgg('cheats') && settings.cheats !== false;
 const SITE_KEY = k => /^(sig|gs):/.test(k);
@@ -1202,7 +1204,8 @@ function hookGameWindow(w) {
 // Called when a game starts or restarts: forget the last game's cheats and hook the new frame early
 // (it gets a new window when the game page loads, so keep checking).
 function watchGameFrame() {
-  CHEAT.scan = null; CHEAT.frozen.clear(); CHEAT.cheats = []; CHEAT.speed = 1;
+  // Addresses and variables belong to the old game, so results and the List start empty.
+  resetScan(); CHEAT.list = []; CHEAT.cheats = []; CHEAT.speed = 1;
   CHEAT.saveSnap = snapshotSaves();
   clearInterval(CHEAT.timer); CHEAT.timer = 0;
   if (cheatsOn()) ensureCheatTimer(true);
@@ -1264,88 +1267,253 @@ function detectEngine() {
 }
 const ENGINE_NAMES = { unity: 'Unity game', godot: 'Godot game', wasm: 'WebAssembly game', flash: 'Flash game (Ruffle)', emulator: 'Emulated retro game', js: 'JavaScript game', blocked: 'Loads from another website', none: 'Game not started' };
 
-/* --- memory scanner --- */
+/* --- scanner (works like Cheat Engine) ---
+   First scan finds every place holding a value (an exact number, a range, or "unknown": remember everything).
+   Each Next scan keeps only the places that match what happened in the game (went up, became 37, …).
+   Undo steps back one scan; New scan throws the results away and starts over. Values worth keeping go to
+   the List tab, where they can be named, changed and frozen, and they stay there through new scans. */
 const MEM_TYPES = {
   i32: { name: '4-byte number', bytes: 4, arr: Int32Array }, f32: { name: 'Decimal (float)', bytes: 4, arr: Float32Array },
   f64: { name: 'Decimal (double)', bytes: 8, arr: Float64Array }, i16: { name: '2-byte number', bytes: 2, arr: Int16Array },
   u8: { name: '1-byte number', bytes: 1, arr: Uint8Array }
 };
-const MAX_HITS = 5e6;
-const near = (type, v, x) => type[0] === 'f' ? (Number.isInteger(x) ? Math.abs(v - x) < 0.5 : Math.abs(v - x) < 1e-3) : v === x;
+const MAX_HITS = 5e6;              // results kept as a list of addresses
+const MAX_SNAPSHOT = 256 << 20;    // "unknown initial value" copies the game's memory: refuse when it is bigger
+const MAX_SHOWN = 300;             // results listed one by one
+const MAX_HISTORY = 3;             // scans kept for Undo
+const SCAN_FIRST = [['exact', 'Exact value'], ['group', 'Several numbers in a row…'], ['bigger', 'Bigger than…'], ['smaller', 'Smaller than…'], ['between', 'Between…'], ['unknown', 'Unknown initial value']];
+const SCAN_NEXT = [['exact', 'Exact value'], ['up', 'Increased'], ['down', 'Decreased'], ['changed', 'Changed'], ['same', 'Unchanged'],
+  ['upBy', 'Increased by…'], ['downBy', 'Decreased by…'], ['bigger', 'Bigger than…'], ['smaller', 'Smaller than…'], ['between', 'Between…']];
+const NEEDS_VALUE = new Set(['exact', 'group', 'bigger', 'smaller', 'between', 'upBy', 'downBy']);
 const tick = () => new Promise(r => setTimeout(r, 0));
-async function memFirstScan(type, x, progress) {
-  const buf = findMemory(); if (!buf) throw new Error('No game memory found yet. Wait for the game to finish loading.');
-  const T = MEM_TYPES[type], view = new T.arr(buf), n = view.length;
-  let hits = new Uint32Array(1 << 16), c = 0;
-  const CH = 1 << 22;
-  for (let s = 0; s < n; s += CH) {
-    const e = Math.min(n, s + CH);
-    if (type[0] === 'f') { for (let i = s; i < e; i++) { const v = view[i]; if (v === v && near(type, v, x)) { if (c === hits.length) { const h = new Uint32Array(c * 2); h.set(hits); hits = h; } hits[c++] = i; if (c >= MAX_HITS) break; } } }
-    else { for (let i = s; i < e; i++) if (view[i] === x) { if (c === hits.length) { const h = new Uint32Array(c * 2); h.set(hits); hits = h; } hits[c++] = i; if (c >= MAX_HITS) break; } }
-    if (c >= MAX_HITS) break;
-    progress(e / n); await tick();
-  }
-  hits = hits.slice(0, c);
-  const prev = new T.arr(c); for (let i = 0; i < c; i++) prev[i] = view[hits[i]];
-  return { kind: 'mem', type, hits, prev, count: c, capped: c >= MAX_HITS, mb: Math.round(buf.byteLength / 1048576) };
-}
-async function memNextScan(scan, mode, x, progress) {
-  const buf = findMemory(); if (!buf) throw new Error('The game memory is gone. Did the game reload?');
-  const T = MEM_TYPES[scan.type], view = new T.arr(buf), { hits, prev } = scan;
-  const keep = new Uint32Array(scan.count), nprev = new T.arr(scan.count); let c = 0;
-  for (let j = 0; j < scan.count; j++) {
-    const i = hits[j]; if (i >= view.length) continue;
-    const v = view[i], p = prev[j];
-    const ok = mode === 'exact' ? near(scan.type, v, x) : mode === 'up' ? v > p : mode === 'down' ? v < p : mode === 'changed' ? v !== p : v === p;
-    if (ok) { keep[c] = i; nprev[c] = v; c++; }
-    if ((j & 0x3fffff) === 0x3fffff) { progress(j / scan.count); await tick(); }
-  }
-  return Object.assign({}, scan, { hits: keep.slice(0, c), prev: nprev.slice(0, c), count: c, capped: false });
-}
-function memRead(type, i) { const b = findMemory(); if (!b) return NaN; const v = new MEM_TYPES[type].arr(b); return i < v.length ? v[i] : NaN; }
-function memWrite(type, i, x) { const b = findMemory(); if (!b) return; const v = new MEM_TYPES[type].arr(b); if (i < v.length) v[i] = x; }
+const cancelled = () => { const e = new Error('Scan cancelled'); e.cancelled = true; return e; };
 
-/* --- JavaScript variable search --- */
-const VAR_SKIP = new Set(['window', 'self', 'top', 'parent', 'frames', 'opener', 'globalThis', 'document', 'location', 'navigator', 'history', 'screen', 'performance', 'localStorage', 'sessionStorage', 'indexedDB', 'caches', 'crypto', 'console', 'WebAssembly', 'customElements', 'visualViewport', 'speechSynthesis', 'external', 'clientInformation', 'chrome', 'trustedTypes', 'cookieStore', 'scheduler', 'navigation', '__sigMem', '__sigSpeed', '__sigHooked']);
-async function varFirstScan(x, progress) {
+// One test for every scan type. v = value now, p = value at the last scan. Decimals match loosely
+// (typing 100 finds 99.6 and 100.4; typing 1.25 finds 1.2501), because games rarely show exact decimals.
+function scanTest(mode, loose, a, b) {
+  const eq = loose ? (v, x) => (Number.isInteger(x) ? Math.abs(v - x) < 0.5 : Math.abs(v - x) < 1e-3) : (v, x) => v === x;
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  switch (mode) {
+    case 'exact': return v => eq(v, a);
+    case 'bigger': return v => v > a;
+    case 'smaller': return v => v < a;
+    case 'between': return v => v >= lo && v <= hi;
+    case 'up': return (v, p) => v > p;
+    case 'down': return (v, p) => v < p;
+    case 'upBy': return (v, p) => eq(v - p, a);
+    case 'downBy': return (v, p) => eq(p - v, a);
+    case 'changed': return (v, p) => v !== p && (v === v || p === p);
+    case 'same': return (v, p) => v === p || (v !== v && p !== p);
+  }
+  throw new Error('Unknown scan type');
+}
+
+// "Any number" scans the three types games use most, side by side. (BitLife, like many Unity games, keeps its
+// money and stats as decimals, which a whole-number scan never finds.)
+const ANY_TYPES = ['i32', 'f32', 'f64'];
+const typeName = t => t === 'any' ? 'Any number' : MEM_TYPES[t].name;
+// A memory scan is a list of parts, one per value type: { type, hits, prev, count } or, while it is
+// remembering every value ("unknown initial value"), { type, dense, snap, mask, count }.
+function memScan(parts, extra) {
+  return Object.assign({ kind: 'mem', parts, count: parts.reduce((n, p) => n + p.count, 0), dense: parts.some(p => p.dense), capped: parts.some(p => p.capped) }, extra);
+}
+async function memFirstScan(type, mode, a, b, progress, group) {
+  const buf = findMemory(); if (!buf) throw new Error('No game memory found yet. Wait for the game to finish loading.');
+  const mb = Math.round(buf.byteLength / 1048576);
+  const types = type === 'any' ? ANY_TYPES : [type];
+  if (mode === 'unknown') {
+    if (type === 'any') throw new Error('Pick a value type for an unknown-value scan (for BitLife: Decimal (float)).');
+    if (buf.byteLength > MAX_SNAPSHOT) throw new Error(`This game uses ${mb} MB of memory, too much to remember all of it. Scan for a value instead.`);
+    progress(.5); await tick();
+    const view = new MEM_TYPES[type].arr(buf);
+    return memScan([{ type, dense: true, snap: view.slice(), mask: null, count: view.length }], { type, mb });
+  }
+  const parts = [];
+  for (let t = 0; t < types.length; t++) {
+    const ty = types[t], T = MEM_TYPES[ty], view = new T.arr(buf), n = view.length, loose = ty[0] === 'f';
+    const sub = x => progress((t + x) / types.length);
+    let hits = new Uint32Array(1 << 16), c = 0;
+    const push = i => { if (c === hits.length) { const h = new Uint32Array(c * 2); h.set(hits); hits = h; } hits[c++] = i; };
+    const CH = 1 << 22;
+    if (group) {
+      // Several numbers in a row: every value in the group must match, one after another.
+      const tests = group.map(x => scanTest('exact', loose, x, x)), g = group.length;
+      for (let s = 0; s < n - g && c < MAX_HITS; s += CH) {
+        const e = Math.min(n - g, s + CH);
+        for (let i = s; i < e; i++) {
+          if (!tests[0](view[i])) continue;
+          let k = 1; while (k < g && tests[k](view[i + k])) k++;
+          if (k === g) for (k = 0; k < g; k++) push(i + k);
+        }
+        sub(e / n); await tick(); if (CHEAT.cancel) throw cancelled();
+      }
+    } else {
+      const test = scanTest(mode, loose, a, b), fastExact = mode === 'exact' && !loose;
+      for (let s = 0; s < n && c < MAX_HITS; s += CH) {
+        const e = Math.min(n, s + CH);
+        for (let i = s; i < e; i++) {
+          if (fastExact ? view[i] !== a : !test(view[i])) continue;
+          push(i); if (c >= MAX_HITS) break;
+        }
+        sub(e / n); await tick(); if (CHEAT.cancel) throw cancelled();
+      }
+    }
+    hits = hits.slice(0, c);
+    const prev = new T.arr(c); for (let i = 0; i < c; i++) prev[i] = view[hits[i]];
+    parts.push({ type: ty, hits, prev, count: c, capped: c >= MAX_HITS });
+  }
+  return memScan(parts, { type, mb });
+}
+async function memNextScan(scan, mode, a, b, progress) {
+  const buf = findMemory(); if (!buf) throw new Error('The game memory is gone. Did the game reload? Press New scan.');
+  const CH = 1 << 22, parts = [];
+  for (let t = 0; t < scan.parts.length; t++) {
+    const pt = scan.parts[t], T = MEM_TYPES[pt.type], view = new T.arr(buf), test = scanTest(mode, pt.type[0] === 'f', a, b);
+    const sub = x => progress((t + x) / scan.parts.length);
+    if (pt.dense) {
+      // Still remembering everything: compare each place with its remembered value.
+      const { snap, mask } = pt, n = Math.min(view.length, snap.length), nmask = new Uint8Array(n);
+      let hits = new Uint32Array(1 << 16), c = 0, total = 0;
+      for (let s = 0; s < n; s += CH) {
+        const e = Math.min(n, s + CH);
+        for (let i = s; i < e; i++) {
+          if (mask && !mask[i]) continue;
+          if (!test(view[i], snap[i])) continue;
+          nmask[i] = 1; total++;
+          if (c <= MAX_HITS) { if (c === hits.length) { const h = new Uint32Array(c * 2); h.set(hits); hits = h; } hits[c++] = i; }
+        }
+        sub(e / n); await tick(); if (CHEAT.cancel) throw cancelled();
+      }
+      if (total > MAX_HITS) { parts.push({ type: pt.type, dense: true, snap: view.slice(0, n), mask: nmask, count: total }); continue; }
+      hits = hits.slice(0, c);
+      const prev = new T.arr(c); for (let i = 0; i < c; i++) prev[i] = view[hits[i]];
+      parts.push({ type: pt.type, hits, prev, count: c });
+      continue;
+    }
+    const keep = new Uint32Array(pt.count), nprev = new T.arr(pt.count); let c = 0;
+    for (let j = 0; j < pt.count; j++) {
+      const i = pt.hits[j]; if (i >= view.length) continue;
+      const v = view[i];
+      if (test(v, pt.prev[j])) { keep[c] = i; nprev[c] = v; c++; }
+      if ((j & 0x3fffff) === 0x3fffff) { sub(j / pt.count); await tick(); if (CHEAT.cancel) throw cancelled(); }
+    }
+    parts.push({ type: pt.type, hits: keep.slice(0, c), prev: nprev.slice(0, c), count: c });
+  }
+  return memScan(parts, { type: scan.type, mb: scan.mb });
+}
+
+/* --- JavaScript variable search (games without WebAssembly memory) --- */
+const VAR_SKIP = new Set(['window', 'self', 'top', 'parent', 'frames', 'opener', 'globalThis', 'document', 'location', 'navigator', 'history', 'screen', 'performance', 'localStorage', 'sessionStorage', 'indexedDB', 'caches', 'crypto', 'console', 'WebAssembly', 'customElements', 'visualViewport', 'speechSynthesis', 'external', 'clientInformation', 'chrome', 'trustedTypes', 'cookieStore', 'scheduler', 'navigation', '__sigMem', '__sigSpeed', '__sigHooked', '__sigVar']);
+const VAR_MAX_NODES = 400000, VAR_MAX_HITS = 200000;
+async function varFirstScan(mode, a, b, progress) {
   const ws = gameWindows(); if (!ws.length) throw new Error('Start the game first.');
-  const hits = [], seen = new WeakSet(); let nodes = 0;
-  const queue = [];
+  const test = mode === 'unknown' ? () => true : scanTest(mode, true, a, b);
+  const hits = [], seen = new WeakSet(), queue = []; let nodes = 0, head = 0;
   for (const w of ws) {
     let keys = []; try { keys = Object.keys(w); } catch (e) {}
     for (const k of keys) if (!VAR_SKIP.has(k) && !(k in window) && !k.startsWith('on')) queue.push([w, k, k, 0]);
   }
-  while (queue.length && nodes < 400000) {
-    const [o, k, path, depth] = queue.shift(); nodes++;
+  while (head < queue.length && nodes < VAR_MAX_NODES && hits.length < VAR_MAX_HITS) {
+    const [o, k, path, depth] = queue[head++]; nodes++;
     let v; try { v = o[k]; } catch (e) { continue; }
-    if (typeof v === 'number') { if (v === x || (!Number.isInteger(v) && Math.abs(v - x) < 0.5)) hits.push({ o, k, path, prev: v }); continue; }
+    if (typeof v === 'number') { if (test(v)) hits.push({ o, k, path, prev: v }); continue; }
     if (!v || typeof v !== 'object' || depth >= 6 || seen.has(v)) continue;
     seen.add(v);
     try { if (v.nodeType || v.window === v || ArrayBuffer.isView(v) || /ArrayBuffer\]$/.test(Object.prototype.toString.call(v))) continue; } catch (e) { continue; }
     let ks; try { ks = Array.isArray(v) ? (v.length > 5000 ? [] : Object.keys(v)) : Object.keys(v); } catch (e) { continue; }
     for (const kk of ks.slice(0, 2000)) if (!VAR_SKIP.has(kk)) queue.push([v, kk, Array.isArray(v) ? `${path}[${kk}]` : `${path}.${kk}`, depth + 1]);
-    if ((nodes & 16383) === 0) { progress(Math.min(.95, nodes / 400000)); await tick(); }
+    if ((nodes & 16383) === 0) { progress(Math.min(.95, nodes / VAR_MAX_NODES)); await tick(); if (CHEAT.cancel) throw cancelled(); }
   }
-  return { kind: 'var', type: 'var', hits, count: hits.length, capped: nodes >= 400000 };
+  return { kind: 'var', type: 'var', hits, count: hits.length, capped: nodes >= VAR_MAX_NODES || hits.length >= VAR_MAX_HITS };
 }
-function varNextScan(scan, mode, x) {
-  const hits = [];
+function varNextScan(scan, mode, a, b) {
+  const test = scanTest(mode, true, a, b), hits = [];
   for (const h of scan.hits) {
     let v; try { v = h.o[h.k]; } catch (e) { continue; }
-    if (typeof v !== 'number') continue;
-    const p = h.prev;
-    const ok = mode === 'exact' ? (v === x || (!Number.isInteger(v) && Math.abs(v - x) < 0.5)) : mode === 'up' ? v > p : mode === 'down' ? v < p : mode === 'changed' ? v !== p : v === p;
-    if (ok) hits.push(Object.assign({}, h, { prev: v }));
+    if (typeof v === 'number' && test(v, h.prev)) hits.push({ o: h.o, k: h.k, path: h.path, prev: v });
   }
-  return Object.assign({}, scan, { hits, count: hits.length, capped: false });
+  return { kind: 'var', type: 'var', hits, count: hits.length };
 }
 
-/* --- freezing --- */
-function applyFrozen() { for (const f of CHEAT.frozen.values()) try { f.set(); } catch (e) {} }
-function hitKey(scan, j) { return scan.kind === 'mem' ? `m:${scan.type}:${scan.hits[j]}` : `v:${scan.hits[j].path}`; }
-function hitRead(scan, j) { if (scan.kind === 'mem') return memRead(scan.type, scan.hits[j]); try { return scan.hits[j].o[scan.hits[j].k]; } catch (e) { return NaN; } }
-function hitWrite(scan, j, x) { if (scan.kind === 'mem') memWrite(scan.type, scan.hits[j], x); else try { scan.hits[j].o[scan.hits[j].k] = x; } catch (e) {} }
-function hitLabel(scan, j) { return scan.kind === 'mem' ? '0x' + (scan.hits[j] * MEM_TYPES[scan.type].bytes).toString(16).toUpperCase().padStart(8, '0') : scan.hits[j].path; }
+// Running a scan from the panel: First/Next, Undo and New scan.
+function resetScan() { CHEAT.scan = null; CHEAT.history = []; CHEAT.picked.clear(); CHEAT.form.mode = 'exact'; CHEAT.cancel = true; CHEAT.scanLabel = ''; }
+async function runScan(next) {
+  const f = CHEAT.form, mode = f.mode;
+  const group = mode === 'group' ? String(f.val).split(/[\s,;]+/).filter(Boolean).map(Number) : null;
+  const a = group ? group[0] : f.val === '' ? NaN : +f.val, b = f.val2 === '' ? NaN : +f.val2;
+  if (group && (group.length < 2 || group.some(x => !isFinite(x)))) return toast('Type two or more numbers, separated by spaces');
+  if (group && !findMemory()) return toast('This game has no memory to search for numbers in a row. Use Exact value.');
+  if (!group && NEEDS_VALUE.has(mode) && !isFinite(a)) return toast('Type the number you see in the game');
+  if (mode === 'between' && !isFinite(b)) return toast('Type both ends of the range');
+  CHEAT.busy = true; CHEAT.cancel = false; CHEAT.progress = 0; renderCheatPanel();
+  const progress = x => { CHEAT.progress = x; const bar = $('#chProg'); if (bar) bar.style.setProperty('--p', Math.round(x * 100) + '%'); };
+  try {
+    let res;
+    if (!next) res = findMemory() ? await memFirstScan(f.type, mode, a, b, progress, group) : await varFirstScan(mode, a, b, progress);
+    else {
+      const s = CHEAT.scan;
+      res = s.kind === 'mem' ? await memNextScan(s, mode, a, b, progress) : varNextScan(s, mode, a, b);
+      CHEAT.history.push(s); if (CHEAT.history.length > MAX_HISTORY) CHEAT.history.shift();
+    }
+    res.n = next ? (CHEAT.scan.n || 1) + 1 : 1;
+    CHEAT.scan = res; CHEAT.picked.clear();
+    if (!next) CHEAT.form.mode = 'exact';
+  } catch (err) { if (!err.cancelled) toast(err.message || 'Scan failed'); }
+  CHEAT.busy = false; CHEAT.cancel = false; renderCheatPanel();
+  const v = $('[data-scan-val]'); if (v) v.focus();
+}
+function undoScan() {
+  if (!CHEAT.history.length) return;
+  CHEAT.scan = CHEAT.history.pop(); CHEAT.picked.clear(); renderCheatPanel();
+}
+
+/* --- results and the List --- */
+function partAt(scan, j) { for (const pt of scan.parts) { if (j < pt.count) return [pt, j]; j -= pt.count; } return [scan.parts[0], 0]; }
+function hitEntry(scan, j) {
+  if (scan.kind === 'mem') { const [pt, k] = partAt(scan, j); return { kind: 'mem', type: pt.type, i: pt.hits[k] }; }
+  const h = scan.hits[j]; return { kind: 'var', type: 'var', o: h.o, k: h.k, path: h.path };
+}
+function hitPrev(scan, j) { if (scan.kind === 'mem') { const [pt, k] = partAt(scan, j); return pt.prev[k]; } return scan.hits[j].prev; }
+function entryKey(e) { return e.kind === 'mem' ? `m:${e.type}:${e.i}` : `v:${e.path}`; }
+function entryRead(e) {
+  if (e.kind === 'mem') { const b = findMemory(); if (!b) return NaN; const v = new MEM_TYPES[e.type].arr(b); return e.i < v.length ? v[e.i] : NaN; }
+  try { const v = e.o[e.k]; return typeof v === 'number' ? v : NaN; } catch (err) { return NaN; }
+}
+function entryWrite(e, x) {
+  if (e.kind === 'mem') { const b = findMemory(); if (!b) return; const v = new MEM_TYPES[e.type].arr(b); if (e.i < v.length) v[e.i] = x; }
+  else try { e.o[e.k] = x; } catch (err) {}
+}
+function entryAddr(e) { return e.kind === 'mem' ? '0x' + (e.i * MEM_TYPES[e.type].bytes).toString(16).toUpperCase().padStart(8, '0') : e.path; }
+function entryType(e) { return e.kind === 'mem' ? MEM_TYPES[e.type].name : 'Variable'; }
+const fmtVal = v => typeof v !== 'number' || v !== v ? '?' : Number.isInteger(v) ? String(v) : String(Math.round(v * 10000) / 10000);
+function addToList(e, opts = {}) {
+  const key = entryKey(e);
+  let item = CHEAT.list.find(x => entryKey(x) === key);
+  if (!item) { item = Object.assign({ id: CHEAT.nextId++, name: opts.name || `Value ${CHEAT.nextId - 1}`, frozen: false, fx: 0 }, e); CHEAT.list.push(item); }
+  if (opts.set !== undefined) { entryWrite(item, opts.set); item.fx = opts.set; }
+  if (opts.freeze) { item.frozen = true; item.fx = opts.set !== undefined ? opts.set : entryRead(item); ensureCheatTimer(); }
+  return item;
+}
+// BitLife: its four stats sit side by side as decimals (Happiness, Health, Smarts, Looks), so typing the
+// four percentages finds them in one go. Money is a decimal somewhere else and needs a normal two-step scan.
+const isBitLife = () => !!player.g && /bitlife/i.test(player.g.t);
+async function bitlifeFindStats(text) {
+  const vals = String(text).split(/[\s,;%]+/).filter(Boolean).map(Number);
+  if (vals.length !== 4 || vals.some(x => !isFinite(x))) return toast('Type the four stats as numbers: Happiness Health Smarts Looks');
+  CHEAT.busy = true; CHEAT.cancel = false; renderCheatPanel();
+  try {
+    const r = await memFirstScan('f32', 'group', 0, 0, () => {}, vals);
+    const pt = r.parts[0], groups = pt.count / 4;
+    if (!groups) toast('Stats not found. Check the numbers (just the percentages) and try again.');
+    else {
+      ['Happiness', 'Health', 'Smarts', 'Looks'].forEach((name, k) => addToList({ kind: 'mem', type: 'f32', i: pt.hits[k] }, { name }));
+      toast(groups === 1 ? 'Found your stats. They’re in your List.' : `Found ${groups} matches; added the first. If it’s wrong, age up and try again.`);
+      CHEAT.tab = 'list';
+    }
+  } catch (err) { toast(err.message || 'Search failed'); }
+  CHEAT.busy = false; renderCheatPanel();
+}
+function applyFrozen() { for (const e of CHEAT.list) if (e.frozen) try { entryWrite(e, e.fx); } catch (err) {} }
 
 /* --- save data --- */
 function snapshotSaves() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!SITE_KEY(k)) o[k] = localStorage.getItem(k); } } catch (e) {} return o; }
@@ -1420,7 +1588,7 @@ setInterval(() => { if (player.g) layoutCheatTab(); }, 500);
 function toggleCheatPanel(force) {
   CHEAT.open = force ?? !CHEAT.open;
   let p = $('#cheatPanel');
-  if (!CHEAT.open) { p?.remove(); layoutCheatTab(); return; }
+  if (!CHEAT.open) { p?.remove(); clearInterval(CHEAT.live); CHEAT.live = 0; layoutCheatTab(); return; }
   if (!p) {
     document.body.insertAdjacentHTML('beforeend', `<aside class="cheat-panel" id="cheatPanel" role="dialog" aria-label="Cheats"></aside>`);
     p = $('#cheatPanel'); wireCheatPanel(p);
@@ -1433,8 +1601,9 @@ function renderCheatPanel() {
   const p = $('#cheatPanel'); if (!p) return;
   const eng = detectEngine(), mem = findMemory();
   CHEAT.eng = eng + (mem ? '+mem' : '');
-  const tabs = [['speed', 'Speed'], ['scan', 'Scanner'], ['save', 'Save data'], ['emu', 'Emulator']];
-  const s = CHEAT.scan;
+  const frozen = CHEAT.list.filter(e => e.frozen).length;
+  const tabs = [['speed', 'Speed'], ['scan', 'Scanner'], ['list', `List${CHEAT.list.length ? ` (${CHEAT.list.length})` : ''}`], ['save', 'Save data'], ['emu', 'Emulator']];
+  const s = CHEAT.scan, f = CHEAT.form;
   let body = '';
   if (!player.g) body = `<p class="ch-note">Start a game, then open this again.</p>`;
   else if (eng === 'blocked') body = `<p class="ch-note">This game loads from another website, so cheats can’t reach inside it. Save data and speed may still work for parts of it.</p>`;
@@ -1445,32 +1614,63 @@ function renderCheatPanel() {
       <label class="ch-range"><span>Custom <output>${CHEAT.speed}×</output></span><input type="range" min="0.1" max="8" step="0.05" value="${CHEAT.speed}" data-speed-range></label>`;
   }
   if (player.g && CHEAT.tab === 'scan') {
-    const useMem = !!mem;
-    const kind = s ? s.kind : useMem ? 'mem' : 'var';
-    body += `<p class="ch-note">${useMem ? `Scanning the game’s memory (${Math.round(mem.byteLength / 1048576)} MB).` : 'This game has no WebAssembly memory, so this searches its JavaScript variables instead (hit-or-miss).'}
-      Type a number you can see in the game (coins, health…) and press <b>First scan</b>. Change it in the game, type the new number, press <b>Next scan</b>. Repeat until only a few are left.</p>
+    const kind = s ? s.kind : mem ? 'mem' : 'var';
+    const modes = s ? SCAN_NEXT : SCAN_FIRST;
+    if (!modes.some(([k]) => k === f.mode)) f.mode = 'exact';
+    const needs = NEEDS_VALUE.has(f.mode);
+    if (isBitLife() && mem) body += `<div class="ch-tip"><b>BitLife</b><p>BitLife keeps money and stats as decimal numbers, so these use <b>Decimal (float)</b>.</p>
+        <div class="ch-row"><input class="ch-in" type="text" inputmode="decimal" placeholder="Happiness Health Smarts Looks, e.g. 90 100 5 58" data-bl-stats><button class="tbtn ch-go" data-bl="stats">Find stats</button></div>
+        <div class="ch-row"><input class="ch-in" type="number" step="any" placeholder="Bank balance, e.g. 1234" data-bl-money><button class="tbtn ch-go" data-bl="money">Find money</button></div>
+        ${CHEAT.scanLabel === 'Money' && s ? `<p class="ch-tip-next">${s.count === 1 ? 'Found it. Press <b>+</b> below to add Money to your List.' : 'Now change your money in the game (ask a parent, get paid, buy something), type the new balance in the box below and press <b>Next scan</b>.'}</p>`
+          : '<small>Balance is $0? Ask a parent for money first, so there’s a number to search for.</small>'}
+      </div>`;
+    const where = kind === 'mem' ? `the game’s memory (${(s && s.mb) || Math.round((mem ? mem.byteLength : 0) / 1048576)} MB)` : 'the game’s JavaScript variables (hit-or-miss)';
+    body += `<p class="ch-note">${s ? `<b>Scan ${s.n || 1}.</b> Change the value in the game, then tell the scanner what happened and press <b>Next scan</b>. Add the right result to your List.`
+        : `Searching ${where}. Type a number you can see in the game (coins, health…) and press <b>First scan</b>. Don’t know the number? Use <b>Unknown initial value</b>.`}</p>
       <div class="ch-row">
-        <input class="ch-in" type="number" step="any" placeholder="Value" data-scan-val>
-        ${kind === 'mem' ? `<select class="ch-in ch-sel" data-scan-type ${s ? 'disabled' : ''}>${Object.entries(MEM_TYPES).map(([k, t]) => `<option value="${k}" ${(s ? s.type : 'i32') === k ? 'selected' : ''}>${t.name}</option>`).join('')}</select>` : ''}
+        <select class="ch-in ch-sel ch-grow" data-scan-mode aria-label="Scan type">${modes.map(([k, n]) => `<option value="${k}"${f.mode === k ? ' selected' : ''}>${n}</option>`).join('')}</select>
+        ${kind === 'mem' ? `<select class="ch-in ch-sel" data-scan-type aria-label="Value type" ${s ? 'disabled title="Press New scan to change the value type"' : ''}>${['any', ...Object.keys(MEM_TYPES)].map(k => `<option value="${k}"${(s ? s.type : f.type) === k ? ' selected' : ''}>${typeName(k)}</option>`).join('')}</select>` : ''}
       </div>
-      <div class="ch-row">
-        <button class="tbtn ch-go" data-scan="first">${s ? 'New scan' : 'First scan'}</button>
-        ${s ? `<select class="ch-in ch-sel" data-scan-mode><option value="exact">Exact value</option><option value="up">Went up</option><option value="down">Went down</option><option value="changed">Changed</option><option value="same">Didn’t change</option></select>
-        <button class="tbtn ch-go" data-scan="next">Next scan</button>` : ''}
+      <div class="ch-row" data-vals ${needs ? '' : 'hidden'}>
+        <input class="ch-in" ${f.mode === 'group' ? 'type="text" inputmode="decimal" placeholder="e.g. 90 100 5 58"' : `type="number" step="any" placeholder="${f.mode === 'upBy' || f.mode === 'downBy' ? 'By how much' : f.mode === 'between' ? 'From' : 'Value'}"`} data-scan-val value="${esc(f.val)}">
+        <input class="ch-in" type="number" step="any" placeholder="To" data-scan-val2 value="${esc(f.val2)}" ${f.mode === 'between' ? '' : 'hidden'}>
       </div>
-      <div class="ch-status" id="chStatus">${s ? `${s.count.toLocaleString()} found${s.capped ? ' (stopped early, too many: try a less common number)' : ''}` : ''}</div>
-      ${s && s.count && s.count <= 200 ? `<div class="ch-bulk">
-        <label class="ch-freeze" title="Tick every result"><input type="checkbox" data-pick-all ${CHEAT.picked.size === s.count ? 'checked' : ''}>All</label>
-        <input class="ch-in" type="number" step="any" placeholder="New value" data-bulk-val>
-        <button class="tbtn ch-go" data-bulk="set">Set ${CHEAT.picked.size || s.count}</button><button class="tbtn" data-bulk="freeze">+ freeze</button>
-        <small class="ch-bulk-note">${CHEAT.picked.size ? `Changes the ${CHEAT.picked.size} ticked` : `Nothing ticked: changes all ${s.count}`}</small>
-      </div>
-      <div class="ch-hits">${Array.from({ length: s.count }, (_, j) => {
-        const key = hitKey(s, j), fr = CHEAT.frozen.has(key);
-        return `<div class="ch-hit${CHEAT.picked.has(j) ? ' picked' : ''}" data-j="${j}"><code title="${esc(hitLabel(s, j))}"><input type="checkbox" class="ch-pick" data-pick="${j}" ${CHEAT.picked.has(j) ? 'checked' : ''} aria-label="Tick">${esc(hitLabel(s, j))}</code><span class="ch-cur" data-cur="${j}">${esc(String(hitRead(s, j)))}</span>
-          <input class="ch-in ch-set" type="number" step="any" placeholder="New" data-set-val="${j}"><button class="tbtn" data-set="${j}">Set</button>
-          <label class="ch-freeze" title="Keep it at this value"><input type="checkbox" data-freeze="${j}" ${fr ? 'checked' : ''}>Freeze</label></div>`;
-      }).join('')}</div>` : s && s.count > 200 ? `<p class="ch-note">Too many to list. Change the value in the game and do a Next scan.</p>` : ''}`;
+      ${CHEAT.busy ? `<div class="ch-busy"><div class="ch-prog" id="chProg" style="--p:${Math.round(CHEAT.progress * 100)}%"><i></i></div><button class="tbtn" data-scan-cancel>Cancel</button></div>`
+        : `<div class="ch-row">${s ? `<button class="tbtn ch-go" data-scan="next">Next scan</button>
+            <button class="tbtn" data-scan-undo ${CHEAT.history.length ? '' : 'disabled'} title="Go back to the previous results">Undo</button>
+            <button class="tbtn" data-scan-new title="Clear the results and start over">New scan</button>`
+          : `<button class="tbtn ch-go" data-scan="first">First scan</button>`}</div>`}
+      ${s ? `<div class="ch-status">${s.count.toLocaleString()} result${s.count === 1 ? '' : 's'}${s.dense ? ' (remembering every value)' : ''}${s.capped ? ' — stopped early, too many: try a less common number' : ''}</div>` : ''}
+      ${s && !s.dense && s.count && s.count <= MAX_SHOWN ? `<div class="ch-bulk">
+          <label class="ch-freeze" title="Tick every result"><input type="checkbox" data-pick-all ${CHEAT.picked.size === s.count ? 'checked' : ''}>All</label>
+          <button class="tbtn" data-bulk="add">Add ${CHEAT.picked.size || s.count} to List</button>
+          <input class="ch-in" type="number" step="any" placeholder="Set to" data-bulk-val>
+          <button class="tbtn ch-go" data-bulk="set">Set</button><button class="tbtn" data-bulk="freeze" title="Set, add to the List and keep it there">Freeze</button>
+          <small class="ch-bulk-note">${CHEAT.picked.size ? `Acts on the ${CHEAT.picked.size} ticked` : `Nothing ticked: acts on all ${s.count}`}</small>
+        </div>
+        <div class="ch-table">
+          <div class="ch-th"><span>Address</span><span>Now</span><span>Before</span><span></span></div>
+          ${Array.from({ length: s.count }, (_, j) => {
+            const e = hitEntry(s, j), inList = CHEAT.list.some(x => entryKey(x) === entryKey(e));
+            const before = hitPrev(s, j);
+            return `<div class="ch-tr${CHEAT.picked.has(j) ? ' picked' : ''}"><label class="ch-addr" title="${esc(entryAddr(e))}"><input type="checkbox" class="ch-pick" data-pick="${j}" ${CHEAT.picked.has(j) ? 'checked' : ''} aria-label="Tick">${esc(entryAddr(e))}</label>
+              <span class="ch-cur" data-cur="${j}">${fmtVal(entryRead(e))}</span><span class="ch-prev">${fmtVal(before)}${s.type === 'any' ? `<small class="ch-ty">${e.type === 'i32' ? 'whole' : e.type === 'f32' ? 'float' : 'double'}</small>` : ''}</span>
+              <button class="tbtn ch-add" data-add="${j}" ${inList ? 'disabled title="Already in your List"' : 'title="Add to your List"'}>${inList ? ic('check') : '+'}</button></div>`;
+          }).join('')}
+        </div>` : s && s.count > MAX_SHOWN ? `<p class="ch-note">Too many to list. Change the value in the game and do a Next scan to narrow it down.</p>`
+        : s && !s.count ? `<p class="ch-note">Nothing matched. Press <b>Undo</b> to go back a step, or <b>New scan</b> to start over.</p>` : ''}`;
+  }
+  if (player.g && CHEAT.tab === 'list') {
+    body += CHEAT.list.length ? `<p class="ch-note">Your saved values. Rename them, change them, or <b>freeze</b> one to keep it at a value. They stay here when you start a new scan.</p>
+      <div class="ch-list">${CHEAT.list.map(e => `<div class="ch-item${e.frozen ? ' frozen' : ''}" data-id="${e.id}">
+          <div class="ch-item-top"><input class="ch-in ch-name" value="${esc(e.name)}" data-name="${e.id}" aria-label="Name" maxlength="40"><span class="ch-cur" data-lcur="${e.id}">${fmtVal(entryRead(e))}</span></div>
+          <div class="ch-item-sub"><code title="${esc(entryAddr(e))}">${esc(entryAddr(e))}</code><small>${esc(entryType(e))}</small></div>
+          <div class="ch-row"><input class="ch-in" type="number" step="any" placeholder="New value" data-lset-val="${e.id}"><button class="tbtn ch-go" data-lset="${e.id}">Set</button>
+            <label class="ch-freeze" title="Keep it at this value"><input type="checkbox" data-lfreeze="${e.id}" ${e.frozen ? 'checked' : ''}>Freeze${e.frozen ? ` at ${fmtVal(e.fx)}` : ''}</label>
+            <button class="tbtn icon-only ch-del" data-ldel="${e.id}" title="Remove">${ic('close')}</button></div>
+        </div>`).join('')}</div>
+      <div class="ch-row"><button class="tbtn" data-list-clear>Clear list</button></div>`
+      : `<p class="ch-note">Nothing saved yet. Find a value with the <b>Scanner</b>, then press <b>+</b> next to it to keep it here.</p>`;
   }
   if (player.g && CHEAT.tab === 'save') {
     const snap = CHEAT.saveSnap || {}, keys = [];
@@ -1498,7 +1698,7 @@ function renderCheatPanel() {
   p.innerHTML = `<div class="ch-head"><b>${ic('zap')}Cheats</b><span class="ch-eng">${esc(ENGINE_NAMES[eng] || '')}</span><button class="tbtn icon-only" data-ch-close title="Close">${ic('close')}</button></div>
     <div class="ch-tabs">${tabs.map(([k, n]) => `<button class="${CHEAT.tab === k ? 'on' : ''}" data-ch-tab="${k}">${n}</button>`).join('')}</div>
     <div class="ch-body">${body}</div>
-    ${CHEAT.frozen.size ? `<div class="ch-foot">${CHEAT.frozen.size} frozen value${CHEAT.frozen.size === 1 ? '' : 's'} <button class="tbtn" data-unfreeze>Unfreeze all</button></div>` : ''}`;
+    ${frozen ? `<div class="ch-foot">${frozen} frozen value${frozen === 1 ? '' : 's'} <button class="tbtn" data-unfreeze>Unfreeze all</button></div>` : ''}`;
 }
 function applyEmuCheats() {
   const emu = findEmulator(); if (!emu) return;
@@ -1506,51 +1706,52 @@ function applyEmuCheats() {
   try { gm.resetCheat && gm.resetCheat(); CHEAT.cheats.forEach((c, i) => gm.setCheat(i, c.on ? 1 : 0, c.code)); } catch (e) { toast('This emulator didn’t accept the code'); }
 }
 function wireCheatPanel(p) {
-  const status = t => { const el = $('#chStatus'); if (el) el.textContent = t; };
+  const listItem = id => CHEAT.list.find(e => e.id === +id);
   p.addEventListener('click', async e => {
-    const b = e.target.closest('button'); if (!b || CHEAT.busy) return;
+    const b = e.target.closest('button'); if (!b) return;
     const d = b.dataset;
+    if ('scanCancel' in d) { CHEAT.cancel = true; return; }
+    if (CHEAT.busy) return;
     if ('chClose' in d) return toggleCheatPanel(false);
     if (d.chTab) { CHEAT.tab = d.chTab; return renderCheatPanel(); }
     if (d.speed) { setGameSpeed(+d.speed); toast(`Game speed ${d.speed}×`); return renderCheatPanel(); }
-    if ('unfreeze' in d) { CHEAT.frozen.clear(); return renderCheatPanel(); }
+    if ('unfreeze' in d) { CHEAT.list.forEach(x => { x.frozen = false; }); return renderCheatPanel(); }
     if ('restart' in d) { const f = $('#stageFrame iframe'); if (f) { f.src = f.src; watchGameFrame(); toast('Restarting the game'); } return renderCheatPanel(); }
-    if (d.scan) {
-      const raw = $('[data-scan-val]', p).value.trim(), x = raw === '' ? NaN : +raw;
-      const mode = d.scan === 'next' ? $('[data-scan-mode]', p).value : 'exact';
-      if (mode === 'exact' && !isFinite(x)) return toast('Type the number you see in the game');
-      CHEAT.busy = true; b.disabled = true; status('Scanning…');
-      try {
-        const prog = f => status(`Scanning… ${Math.round(f * 100)}%`);
-        if (d.scan === 'first') {
-          const type = $('[data-scan-type]', p)?.value || 'i32';
-          CHEAT.scan = findMemory() ? await memFirstScan(type, x, prog) : await varFirstScan(x, prog);
-        } else CHEAT.scan = CHEAT.scan.kind === 'mem' ? await memNextScan(CHEAT.scan, mode, x, prog) : varNextScan(CHEAT.scan, mode, x);
-      } catch (err) { toast(err.message || 'Scan failed'); }
-      CHEAT.busy = false; CHEAT.picked.clear(); renderCheatPanel();
-      const v = $('[data-scan-val]', p); if (v) { v.value = raw; v.focus(); }
+    if (d.scan) return runScan(d.scan === 'next');
+    if ('scanUndo' in d) return undoScan();
+    if ('scanNew' in d) { resetScan(); CHEAT.cancel = false; toast('Results cleared. Ready for a first scan.'); renderCheatPanel(); $('[data-scan-val]', p)?.focus(); return; }
+    if (d.add !== undefined) { const s = CHEAT.scan; if (s) { addToList(hitEntry(s, +d.add), s.count === 1 && CHEAT.scanLabel ? { name: CHEAT.scanLabel } : {}); toast('Added to your List'); } return renderCheatPanel(); }
+    if (d.bl === 'stats') return bitlifeFindStats($('[data-bl-stats]', p).value);
+    if (d.bl === 'money') {
+      const raw = $('[data-bl-money]', p).value.trim();
+      if (raw === '' || !isFinite(+raw)) return toast('Type your bank balance (just the number)');
+      resetScan(); CHEAT.cancel = false;
+      Object.assign(CHEAT.form, { type: 'f32', mode: 'exact', val: raw, val2: '' });
+      await runScan(false);
+      CHEAT.scanLabel = 'Money'; CHEAT.form.val = ''; renderCheatPanel();
       return;
     }
     if (d.bulk) {
-      const s = CHEAT.scan, x = +$('[data-bulk-val]', p).value, raw = $('[data-bulk-val]', p).value.trim();
-      if (!s || raw === '' || !isFinite(x)) return toast('Type the value to set first');
+      const s = CHEAT.scan; if (!s) return;
       const js = CHEAT.picked.size ? [...CHEAT.picked] : Array.from({ length: s.count }, (_, j) => j);
+      if (d.bulk === 'add') { js.forEach(j => addToList(hitEntry(s, j))); toast(`Added ${js.length} to your List`); return renderCheatPanel(); }
+      const raw = $('[data-bulk-val]', p).value.trim(), x = +raw;
+      if (raw === '' || !isFinite(x)) return toast('Type the value to set first');
       for (const j of js) {
-        hitWrite(s, j, x);
-        const key = hitKey(s, j);
-        if (d.bulk === 'freeze' || CHEAT.frozen.has(key)) CHEAT.frozen.set(key, { set: () => hitWrite(s, j, x) });
+        const en = hitEntry(s, j);
+        if (d.bulk === 'freeze') addToList(en, { set: x, freeze: true });
+        else { entryWrite(en, x); const it = CHEAT.list.find(i => entryKey(i) === entryKey(en)); if (it) it.fx = x; }
       }
-      if (d.bulk === 'freeze') ensureCheatTimer();
-      toast(`${d.bulk === 'freeze' ? 'Set and froze' : 'Set'} ${js.length} value${js.length === 1 ? '' : 's'} to ${x}`);
+      toast(`${d.bulk === 'freeze' ? 'Froze' : 'Set'} ${js.length} value${js.length === 1 ? '' : 's'} at ${x}`);
       return renderCheatPanel();
     }
-    if (d.set) {
-      const s = CHEAT.scan, j = +d.set, x = +$(`[data-set-val="${j}"]`, p).value;
-      if (!s || !isFinite(x)) return toast('Type a new value first');
-      hitWrite(s, j, x);
-      const key = hitKey(s, j); if (CHEAT.frozen.has(key)) CHEAT.frozen.set(key, { set: () => hitWrite(s, j, x) });
-      toast('Value changed'); return renderCheatPanel();
+    if (d.lset) {
+      const it = listItem(d.lset), raw = $(`[data-lset-val="${d.lset}"]`, p).value.trim(), x = +raw;
+      if (!it || raw === '' || !isFinite(x)) return toast('Type a new value first');
+      entryWrite(it, x); it.fx = x; toast(`${it.name} set to ${x}`); return renderCheatPanel();
     }
+    if (d.ldel) { CHEAT.list = CHEAT.list.filter(x => x.id !== +d.ldel); return renderCheatPanel(); }
+    if ('listClear' in d) { CHEAT.list = []; return renderCheatPanel(); }
     if ('savePut' in d || 'saveDel' in d) {
       const box = b.closest('[data-key]'), k = box.dataset.key;
       try { if ('saveDel' in d) localStorage.removeItem(k); else localStorage.setItem(k, $('textarea', box).value); } catch (err) { return toast('Couldn’t save that'); }
@@ -1564,34 +1765,46 @@ function wireCheatPanel(p) {
     if (d.emuDel) { CHEAT.cheats.splice(+d.emuDel, 1); applyEmuCheats(); return renderCheatPanel(); }
   });
   p.addEventListener('change', e => {
-    const el = e.target;
-    if (el.dataset.freeze !== undefined) {
-      const s = CHEAT.scan, j = +el.dataset.freeze, key = hitKey(s, j);
-      if (el.checked) { const x = hitRead(s, j); CHEAT.frozen.set(key, { set: () => hitWrite(s, j, x) }); ensureCheatTimer(); }
-      else CHEAT.frozen.delete(key);
+    const el = e.target, d = el.dataset;
+    if (d.lfreeze !== undefined) {
+      const it = listItem(d.lfreeze); if (!it) return;
+      it.frozen = el.checked; if (el.checked) { it.fx = entryRead(it); ensureCheatTimer(); }
       renderCheatPanel();
-    } else if (el.dataset.pick !== undefined) {
-      el.checked ? CHEAT.picked.add(+el.dataset.pick) : CHEAT.picked.delete(+el.dataset.pick); renderCheatPanel();
-    } else if (el.dataset.pickAll !== undefined) {
-      CHEAT.picked.clear(); if (el.checked && CHEAT.scan) for (let j = 0; j < CHEAT.scan.count; j++) CHEAT.picked.add(j); renderCheatPanel();
-    } else if (el.dataset.emuOn !== undefined) { CHEAT.cheats[+el.dataset.emuOn].on = el.checked; applyEmuCheats(); }
+    } else if (d.name !== undefined) { const it = listItem(d.name); if (it) it.name = el.value.trim() || it.name; }
+    else if (d.pick !== undefined) { el.checked ? CHEAT.picked.add(+d.pick) : CHEAT.picked.delete(+d.pick); renderCheatPanel(); }
+    else if (d.pickAll !== undefined) { CHEAT.picked.clear(); if (el.checked && CHEAT.scan) for (let j = 0; j < CHEAT.scan.count; j++) CHEAT.picked.add(j); renderCheatPanel(); }
+    else if (d.scanMode !== undefined) { CHEAT.form.mode = el.value; renderCheatPanel(); $('[data-scan-val]', p)?.focus(); }
+    else if (d.scanType !== undefined) CHEAT.form.type = el.value;
+    else if (d.emuOn !== undefined) { CHEAT.cheats[+d.emuOn].on = el.checked; applyEmuCheats(); }
   });
   p.addEventListener('input', e => {
-    const el = e.target;
-    if (el.dataset.speedRange !== undefined) { const v = Math.round(+el.value * 100) / 100; setGameSpeed(v); el.previousElementSibling.querySelector('output').textContent = v + '×'; p.querySelectorAll('[data-speed]').forEach(c => c.classList.toggle('on', +c.dataset.speed === v)); }
-    else if (el.dataset.saveFilter !== undefined) { const q = el.value.toLowerCase(); p.querySelectorAll('.ch-save').forEach(x => { x.hidden = !x.dataset.key.toLowerCase().includes(q); }); }
+    const el = e.target, d = el.dataset;
+    if (d.scanVal !== undefined) CHEAT.form.val = el.value;
+    else if (d.scanVal2 !== undefined) CHEAT.form.val2 = el.value;
+    else if (d.speedRange !== undefined) { const v = Math.round(+el.value * 100) / 100; setGameSpeed(v); el.previousElementSibling.querySelector('output').textContent = v + '×'; p.querySelectorAll('[data-speed]').forEach(c => c.classList.toggle('on', +c.dataset.speed === v)); }
+    else if (d.saveFilter !== undefined) { const q = el.value.toLowerCase(); p.querySelectorAll('.ch-save').forEach(x => { x.hidden = !x.dataset.key.toLowerCase().includes(q); }); }
   });
-  p.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.bulkVal !== undefined) { e.preventDefault(); p.querySelector('[data-bulk="set"]')?.click(); }
-    if (e.key === 'Enter' && e.target.dataset.scanVal !== undefined) { e.preventDefault(); p.querySelector(CHEAT.scan ? '[data-scan="next"]' : '[data-scan="first"]')?.click(); } e.stopPropagation(); });
-  // Keep the current values fresh while the scanner is open.
-  // Also redraw when the game finishes loading and turns out to be a different kind (e.g. its memory appears).
-  setInterval(() => {
-    if (!CHEAT.open || !document.body.contains(p)) return;
+  p.addEventListener('keydown', e => {
+    const d = e.target.dataset;
+    if (e.key === 'Enter') {
+      if (d.bulkVal !== undefined) { e.preventDefault(); p.querySelector('[data-bulk="set"]')?.click(); }
+      else if (d.scanVal !== undefined || d.scanVal2 !== undefined) { e.preventDefault(); p.querySelector(CHEAT.scan ? '[data-scan="next"]' : '[data-scan="first"]')?.click(); }
+      else if (d.lsetVal !== undefined) { e.preventDefault(); p.querySelector(`[data-lset="${d.lsetVal}"]`)?.click(); }
+      else if (d.name !== undefined) { e.preventDefault(); e.target.blur(); }
+    }
+    e.stopPropagation();   // keys typed here must not reach the game
+  });
+  // Keep the shown values fresh while the menu is open, and redraw when the game finishes loading and turns out
+  // to be a different kind (e.g. its memory appears). Stopped when the menu closes.
+  clearInterval(CHEAT.live);
+  CHEAT.live = setInterval(() => {
+    if (!CHEAT.open || !document.body.contains(p)) { clearInterval(CHEAT.live); CHEAT.live = 0; return; }
     const eng = detectEngine() + (findMemory() ? '+mem' : '');
     const typing = p.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
     if (eng !== CHEAT.eng && !typing && !CHEAT.busy) renderCheatPanel();
-    if (CHEAT.tab === 'scan' && CHEAT.scan) p.querySelectorAll('[data-cur]').forEach(el => { el.textContent = String(hitRead(CHEAT.scan, +el.dataset.cur)); });
-  }, 700);
+    if (CHEAT.tab === 'scan' && CHEAT.scan && !CHEAT.scan.dense) p.querySelectorAll('[data-cur]').forEach(el => { el.textContent = fmtVal(entryRead(hitEntry(CHEAT.scan, +el.dataset.cur))); });
+    if (CHEAT.tab === 'list') p.querySelectorAll('[data-lcur]').forEach(el => { const it = listItem(el.dataset.lcur); if (it) el.textContent = fmtVal(entryRead(it)); });
+  }, 500);
 }
 
 /* ---------- theme store ---------- */
